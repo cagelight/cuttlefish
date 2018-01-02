@@ -4,6 +4,7 @@
 #include <QSet>
 #include <QImageReader>
 
+#include <chrono>
 #include <mutex>
 #include <ctgmath>
 
@@ -18,7 +19,7 @@ CuttleProcessor::~CuttleProcessor() {
 		delete worker;
 	}
 	if (match_data_size) {
-		for (size_t i = 0; i < match_data_size; i++) {
+		for (size_t i = 1; i < match_data_size; i++) {
 			delete [] match_data_fast[i];
 		}
 		delete [] match_data_fast;
@@ -37,7 +38,7 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 	sets.clear();
 	
 	if (match_data_size) {
-		for (size_t i = 0; i < match_data_size; i++) {
+		for (size_t i = 1; i < match_data_size; i++) {
 			delete [] match_data_fast[i];
 		}
 		delete [] match_data_fast;
@@ -45,15 +46,18 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 	
 	worker_run.store(true);
 	worker = new std::thread {[&](){
-		QSet<QString> files;
+		
+		std::atomic_uint_fast32_t group_id {0};
+		if (dirs.size() > 1) group_id++;
+		
 		for (CuttleDirectory const & dir : dirs) {
 			QDirIterator diter {dir.dir, QDir::Files, dir.recursive ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags};
-			while (diter.hasNext()) files.insert(diter.next());
-		}
-		std::atomic_uint_fast32_t id {0};
-		for (QString const & file : files) {
-			CuttleSet set {file};
-			sets.push_back(std::move(set));
+			while (diter.hasNext()) {
+				CuttleSet set {diter.next()};
+				set.group = group_id;
+				sets.push_back(std::move(set));
+			}
+			group_id++;
 		}
 		
 		if (!this->worker_run) return;
@@ -62,11 +66,14 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 		
 		cuiter iter = sets.begin();
 		std::vector<CuttleSet *> toRem {};
-		rwslck sublk;
+		rwslck sublk, emitlk;
 		emit section("Loading images... %p%");
 		emit value(0);
 		emit max(sets.size());
 		int img_i = 0;
+		
+		std::atomic_uint_fast32_t id {0};
+		std::chrono::high_resolution_clock::time_point emit_limiter = std::chrono::high_resolution_clock::now();
 		
 		std::vector<std::thread *> subworkers;
 		for (uint i = 0; i < std::thread::hardware_concurrency(); i++) subworkers.push_back(new std::thread([&](){
@@ -77,7 +84,17 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 					break;
 				}
 				cuiter set = iter++;
-				emit value(img_i++);
+				
+				if (emitlk.write_lock_try()) {
+					std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+					if (now - emit_limiter > std::chrono::milliseconds(125)) {
+						emit value(img_i);
+						emit_limiter = now;
+					}
+					emitlk.write_unlock();
+				}
+				img_i++;
+				
 				sublk.write_unlock();
 				CuttleSet & setref = const_cast<CuttleSet &>(*set); // FIXME -- Why do I have to do this? I'm not using a const_iterator yet it's only giving me const references...
 				try {
@@ -95,8 +112,8 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 		subworkers.clear();
 		
 		match_data_size = id;
-		match_data_fast = new double * [match_data_size];
-		for (uint_fast32_t x = 0; x < match_data_size; x++) {
+		match_data_fast = new double * [match_data_size] {nullptr};
+		for (uint_fast32_t x = 1; x < match_data_size; x++) {
 			match_data_fast[x] = new double [x] {0};
 		}
 		
@@ -126,10 +143,21 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 				}
 				curA = iterA;
 				curB = iterB++;
-				emit value(img_i++);
+				
+				if (emitlk.write_lock_try()) {
+					std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+					if (now - emit_limiter > std::chrono::milliseconds(125)) {
+						emit value(img_i);
+						emit_limiter = now;
+					}
+					emitlk.write_unlock();
+				}
+				img_i++;
+				
 				sublk.write_unlock();
 				if (curA == curB) continue;
-				double val = CuttleSet::compare(*curA, *curB);
+				if (curA->group && curB->group && curA->group == curB->group) continue;
+				double val = CuttleSet::compare(curA.operator->(), curB.operator->());
 				if (curA->id > curB->id) {
 					match_data_fast[curA->id][curB->id] = val;
 				} else {
@@ -161,7 +189,7 @@ double CuttleProcessor::getHigh(CuttleSet const * set) const {
 	double high = 0;
 	for (auto const & i : sets) {
 		if (set->id == i.id) continue;
-		double val = getMatchData(i, *set);
+		double val = getMatchData(&i, set);
 		if (val > high) high = val;
 	}
 	return high;
@@ -179,7 +207,7 @@ std::vector<CuttleSet const *> CuttleProcessor::getSetsAboveThresh(CuttleSet con
 	std::vector<CuttleSet const *> vec {};
 	for (auto const & i : sets) {
 		if (comp->id == i.id) continue;
-		if (getMatchData(i, *comp) >= thresh) vec.push_back(&i);
+		if (getMatchData(&i, comp) >= thresh) vec.push_back(&i);
 	}
 	return vec;
 }
@@ -219,13 +247,16 @@ void CuttleSet::generate(uint_fast16_t res) {
 	}
 }
 
-double CuttleSet::compare(CuttleSet const & A, CuttleSet const & B) {
+double CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
+	
+	if (A == B) return 1;
+	
 	double match = 0;
-	uint_fast16_t res = A.res;
+	uint_fast16_t res = A->res;
 	for (uint_fast16_t i = 0; i < res * res; i++) {
 		
-		QColor const & cA = A.data[i];
-		QColor const & cB = B.data[i];
+		QColor const & cA = A->data[i];
+		QColor const & cB = B->data[i];
 		
 		double mR = abs(cA.redF() - cB.redF());
 		double mG = abs(cA.greenF() - cB.greenF());

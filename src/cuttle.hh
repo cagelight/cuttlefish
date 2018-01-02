@@ -60,7 +60,7 @@ protected:
 	QWidget * dirListWidget = nullptr;
 };
 
-//================================
+//================================oh,
 //--------------------------------
 //================================
 
@@ -69,6 +69,7 @@ struct CuttleSet {
 	QImage getImage() const;
 	void generate(uint_fast16_t res);
 	QString filename;
+	uint_fast32_t group = 0;
 	uint_fast32_t id = 0;
 	uint_fast16_t res = 0;
 	bool delete_me = false;
@@ -79,17 +80,17 @@ struct CuttleSet {
 		if (img_size == QSize {0, 0}) getImage();
 		return img_size;
 	}
-	bool operator == (CuttleSet const & other) const {
-		if (id && other.id) return id == other.id;
-		else return (filename == other.filename);
+	bool operator == (CuttleSet const * other) const {
+		if (id && other->id) return id == other->id;
+		else return (filename == other->filename);
 	}
 	struct Hash {
-		std::size_t operator()(CuttleSet const & p) const {
-			if (p.id) return p.id;
-			else return qHash(p.filename);
+		std::size_t operator()(CuttleSet const * p) const {
+			if (p->id) return p->id;
+			else return qHash(p->filename);
 		}
 	};
-	static double compare(CuttleSet const & A, CuttleSet const & B);
+	static double compare(CuttleSet const * A, CuttleSet const * B);
 };
 
 class CuttleProcessor : public QObject {
@@ -104,10 +105,11 @@ public:
 	std::vector<CuttleSet const *> getSetsAboveThresh(double high) const;
 	std::vector<CuttleSet const *> getSetsAboveThresh(CuttleSet const * comp, double thresh) const;
 	void remove(CuttleSet const * set);
-	inline double getMatchData(CuttleSet const & A, CuttleSet const & B) const {
-		if (A.id == B.id) return 1;
-		if (A.id > B.id) return match_data_fast[A.id][B.id];
-		else return match_data_fast[B.id][A.id];
+	inline double getMatchData(CuttleSet const * A, CuttleSet const * B) const {
+		if (A->group && B->group && A->group == B->group) return 0;
+		if (A->id == B->id) return 1;
+		if (A->id > B->id) return match_data_fast[A->id][B->id];
+		else return match_data_fast[B->id][A->id];
 	}
 protected:
 	struct CuttlePair {
@@ -145,31 +147,47 @@ signals:
 class CuttleLeftItem : public QFrame {
 	Q_OBJECT
 public:
-	CuttleLeftItem(QWidget * parent, CuttleSet const &, CuttleProcessor *);
+	CuttleSet const * set;
+	CuttleLeftItem(QWidget * parent, CuttleSet const *, CuttleProcessor *);
 	inline double getHigh() const { return high; }
 private:
 	CuttleProcessor * proc = nullptr;
 	double high;
 signals:
 	void activated(CuttleSet const * _this);
+	void recalculateHigh();
 };
 
 class CuttleRightItem : public QFrame {
 	Q_OBJECT
 public:
-	CuttleRightItem(QWidget * parent, CuttleSet const & set, CuttleSet const & other, CuttleProcessor * proc);
-	inline double getValue() const { return value; }
 	CuttleSet const * set;
+	CuttleRightItem(QWidget * parent, CuttleSet const * set, CuttleSet const * other, CuttleProcessor * proc);
+	inline double getValue() const { return value; }
 private:
 	double value;
 signals:
 	void activated(CuttleSet const * _this);
 };
 
+struct CuttleCompInfo {
+	enum struct status {
+		high,
+		same,
+		low
+	};
+	bool equal;
+	status size;
+	status dims;
+	status date;
+	static void GetCompInfo(CuttleSet const * A, CuttleSet const * B, CuttleCompInfo & Ac, CuttleCompInfo & Ab);
+};
+
 class CuttleCompItem : public QFrame {
 	Q_OBJECT
 public:
-	CuttleCompItem(QWidget * parent, CuttleSet const & set, CuttleSet const & other, CuttleProcessor * proc);
+	CuttleSet const * set;
+	CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCompInfo const & info, CuttleProcessor * proc);
 signals:
 	void view(CuttleSet const * _this);
 	void delete_me(CuttleSet const * _this);

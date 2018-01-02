@@ -2,12 +2,12 @@
 
 #include <QtWidgets>
 
-CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const & set, CuttleProcessor * proc) : QFrame(parent), proc(proc) {
+CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttleProcessor * proc) : QFrame(parent), set(set), proc(proc) {
 	setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
 	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
 	QGridLayout * layout = new QGridLayout {this};
 	
-	QLabel * nameLabel = new QLabel { QFileInfo(set.filename).fileName(), this };
+	QLabel * nameLabel = new QLabel { QFileInfo(set->filename).fileName(), this };
 	nameLabel->setMinimumWidth(LEFT_COLUMN_SIZE - 50);
 	nameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 	QFontMetrics metrics { nameLabel->font() };
@@ -19,15 +19,15 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const & set, CuttlePr
 	
 	high = 0;
 	for (CuttleSet const & cset : proc->getSets()) {
-		if (cset.id == set.id) continue;
-		double v = proc->getMatchData(set, cset);
+		if (cset.id == set->id) continue;
+		double v = proc->getMatchData(set, &cset);
 		if (v > high) high = v;
 	}
 	
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);
 	activateButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(activateButton, &QPushButton::pressed, this, [=](){emit activated(&set);});
+	connect(activateButton, &QPushButton::pressed, this, [=](){emit activated(set);});
 	lowerLayout->addWidget(activateButton);
 	
 	QLabel * highestMatchLabel = new QLabel {QString("High: %1").arg(high), lowerWidget};
@@ -35,14 +35,23 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const & set, CuttlePr
 	
 	lowerLayout->setMargin(0);
 	layout->addWidget(lowerWidget, 1, 0, 1, 1);
+	
+	connect(this, &CuttleLeftItem::recalculateHigh, this, [=](){
+		high = 0;
+		for (CuttleSet const & cset : proc->getSets()) {
+			if (cset.id == set->id) continue;
+			double v = proc->getMatchData(set, &cset);
+			if (v > high) high = v;
+		}
+	});
 }
 
-CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const & set, CuttleSet const & other, CuttleProcessor * proc) : QFrame(parent), set(&set) {
+CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, CuttleSet const * other, CuttleProcessor * proc) : QFrame(parent), set(set) {
 	setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
 	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
 	QGridLayout * layout = new QGridLayout {this};
 	
-	QLabel * nameLabel = new QLabel { QFileInfo(set.filename).fileName(), this };
+	QLabel * nameLabel = new QLabel { QFileInfo(set->filename).fileName(), this };
 	nameLabel->setMinimumWidth(RIGHT_COLUMN_SIZE - 50);
 	nameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 	QFontMetrics metrics { nameLabel->font() };
@@ -57,7 +66,7 @@ CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const & set, Cuttle
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);
 	activateButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(activateButton, &QPushButton::pressed, this, [=](){emit activated(&set);});
+	connect(activateButton, &QPushButton::pressed, this, [=](){emit activated(set);});
 	lowerLayout->addWidget(activateButton);
 	
 	QLabel * highestMatchLabel = new QLabel {QString("Value: %1").arg(value), lowerWidget};
@@ -73,28 +82,65 @@ static QString readable_file_size(qint64 b) {
 	else return QString {"%1 MiB"}.arg(b / 1048576.0);
 }
 
-CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const & set, CuttleSet const & other, CuttleProcessor * proc) : QFrame(parent) {
+CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCompInfo const & comp, CuttleProcessor * proc) : QFrame(parent), set(set) {
 	setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
 	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
 	QGridLayout * layout = new QGridLayout {this};
 	
-	QLabel * nameLabel = new QLabel { QFileInfo(set.filename).fileName(), this };
+	QLabel * nameLabel = new QLabel { QFileInfo(set->filename).fileName(), this };
 	layout->addWidget(nameLabel, 0, 0, 1, 1);
 	
 	QWidget * infoWidget = new QWidget {this};
 	QHBoxLayout * infoLayout = new QHBoxLayout {infoWidget};
 	
-	QLabel * sizeLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(readable_file_size(set.fi.size())).arg(set.fi.size() >= other.fi.size() ? "green" : "red"), infoWidget};
+	QLabel * eqLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(comp.equal ? "EQUAL" : "NOT EQUAL").arg(comp.equal ? "green" : "yellow"), infoWidget};
+	infoLayout->addWidget(eqLabel);
+	
+	char const * color;
+	switch (comp.size) {
+		case CuttleCompInfo::status::high:
+			color = "green";
+			break;
+		case CuttleCompInfo::status::same:
+			color = "yellow";
+			break;
+		case CuttleCompInfo::status::low:
+			color = "red";
+			break;
+	}
+	
+	QLabel * sizeLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(readable_file_size(set->fi.size())).arg(color), infoWidget};
 	infoLayout->addWidget(sizeLabel);
 	
-	QSize dimsA = set.get_size();
-	QSize dimsB = other.get_size();
-	qint64 dim_sumA = dimsA.width() * dimsA.height();
-	qint64 dim_sumB = dimsB.width() * dimsB.height();
-	QLabel * dimLabel = new QLabel {QString{ "<font color='%3'>%1x%2</font>" }.arg(dimsA.width()).arg(dimsA.height()).arg(dim_sumA >= dim_sumB? "green" : "red"), infoWidget};
+	switch (comp.dims) {
+		case CuttleCompInfo::status::high:
+			color = "green";
+			break;
+		case CuttleCompInfo::status::same:
+			color = "yellow";
+			break;
+		case CuttleCompInfo::status::low:
+			color = "red";
+			break;
+	}
+	
+	QSize dimsA = set->get_size();
+	QLabel * dimLabel = new QLabel {QString{ "<font color='%3'>%1x%2</font>" }.arg(dimsA.width()).arg(dimsA.height()).arg(color), infoWidget};
 	infoLayout->addWidget(dimLabel);
 	
-	QLabel * lastModifiedLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(set.fi.lastModified().toString()).arg(set.fi.lastModified() >= other.fi.lastModified() ? "green" : "red"), infoWidget};
+	switch (comp.date) {
+		case CuttleCompInfo::status::high:
+			color = "green";
+			break;
+		case CuttleCompInfo::status::same:
+			color = "yellow";
+			break;
+		case CuttleCompInfo::status::low:
+			color = "red";
+			break;
+	}
+	
+	QLabel * lastModifiedLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(set->fi.lastModified().toString()).arg(color), infoWidget};
 	infoLayout->addWidget(lastModifiedLabel);
 	
 	infoLayout->setMargin(0);
@@ -107,7 +153,7 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const & set, CuttleSe
 	QPushButton * viewButton = new QPushButton {"VIEW"};
 	viewButton->setMinimumWidth(15);
 	viewButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(viewButton, &QPushButton::pressed, this, [=](){emit view(&set);});
+	connect(viewButton, &QPushButton::pressed, this, [=](){emit view(set);});
 	lowerLayout->addWidget(viewButton);
 	
 	QPushButton * deleteButton = new QPushButton {"DELETE"};
@@ -115,7 +161,7 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const & set, CuttleSe
 	deleteButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
 	connect(deleteButton, &QPushButton::pressed, this, [=](){
 		if (deleteButton->text() == "CONFIRM") {
-			emit delete_me(&set);
+			emit delete_me(set);
 		} else {
 			deleteButton->setText("CONFIRM");
 			deleteButton->setStyleSheet("background-color: red");

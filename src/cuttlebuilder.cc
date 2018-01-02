@@ -37,7 +37,7 @@ CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
 	dirListWidget = new QWidget {dirListArea};
 	dirListArea->setMinimumSize(300, 400);
 	dirListArea->setWidget(dirListWidget);
-	QVBoxLayout * dirListLayout = new QVBoxLayout {dirListWidget};
+	new QVBoxLayout {dirListWidget};
 	layout->addWidget(dirListArea, 0, 0, 1, 1);
 	
 	QPushButton * addBut = new QPushButton {"Add", this};
