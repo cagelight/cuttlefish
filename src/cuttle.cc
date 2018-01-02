@@ -12,8 +12,7 @@
 #include <QImageReader>
 #include <QDebug>
 
-//#define DEFAULT_THRESHOLD 0.985
-#define DEFAULT_THRESHOLD 0.8
+#define DEFAULT_THRESHOLD 0.985
 
 CuttleCore::CuttleCore() : QMainWindow() {
 	
