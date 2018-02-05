@@ -80,16 +80,6 @@ struct CuttleSet {
 		if (img_size == QSize {0, 0}) getImage();
 		return img_size;
 	}
-	bool operator == (CuttleSet const * other) const {
-		if (id && other->id) return id == other->id;
-		else return (filename == other->filename);
-	}
-	struct Hash {
-		std::size_t operator()(CuttleSet const * p) const {
-			if (p->id) return p->id;
-			else return qHash(p->filename);
-		}
-	};
 	static double compare(CuttleSet const * A, CuttleSet const * B);
 };
 
@@ -112,18 +102,6 @@ public:
 		else return match_data_fast[B->id][A->id];
 	}
 protected:
-	struct CuttlePair {
-		uint_fast32_t A;
-		uint_fast32_t B;
-		bool operator == (CuttlePair const & other) const {
-			return (A == other.A && B == other.B) || (A == other.B && B == other.A);
-		}
-		struct Hash {
-			std::size_t operator()(CuttlePair const & p) const {
-				return std::hash<uint_fast32_t>{}(p.A) + std::hash<uint_fast32_t>{}(p.B);
-			}
-		};
-	};
 	std::vector<CuttleSet> sets {};
 	uint_fast32_t match_data_size = 0;
 	double * * match_data_fast = nullptr;

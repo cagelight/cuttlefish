@@ -62,13 +62,22 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	
 	activeLayout->addWidget(activeCompWidget);
 	
-	QPushButton * diffButton = new QPushButton {"Diff", viewCont};
-	activeLayout->addWidget(diffButton);
-	
 	view = new ImageView {viewCont};
 	view->setMinimumSize(400, 400);
 	view->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	activeLayout->addWidget(view);
+	
+	QWidget * diffCont = new QWidget {viewCont};
+	QHBoxLayout * diffLayout = new QHBoxLayout {diffCont};
+	diffLayout->setMargin(0);
+	
+	QPushButton * diffButton = new QPushButton {"Diff", diffCont};
+	diffLayout->addWidget(diffButton);
+	
+	QPushButton * diffSButton = new QPushButton {"Diff Stencil", diffCont};
+	diffLayout->addWidget(diffSButton);
+	
+	activeLayout->addWidget(diffCont);
 	
 	activeLayout->setMargin(0);
 	viewLayout->addWidget(activeWidget);
@@ -156,6 +165,20 @@ CuttleCore::CuttleCore() : QMainWindow() {
 						for (int y = 0; y < A.height(); y++) for (int x = 0; x < A.width(); x++) {
 							QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
 							pC.setRgb(qAbs(pA.red() - pB.red()), qAbs(pA.green() - pB.green()), qAbs(pA.blue() - pB.blue()));
+							C.setPixel(x, y, pC.rgb());
+						}
+						view->setImage(C, ImageView::KEEP_FIT_FORCE);
+					});
+					
+					diffSButton->disconnect();
+					connect(diffSButton, &QPushButton::pressed, this, [=]() {
+						QImage A = set->getImage();
+						QImage B = active_set->getImage();
+						if (A.size() != B.size()) B = B.scaled(A.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+						QImage C {A.size(), QImage::Format_RGB32};
+						for (int y = 0; y < A.height(); y++) for (int x = 0; x < A.width(); x++) {
+							QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
+							pC.setRgb(qAbs(pA.red() - pB.red()) ? 255 : 0, qAbs(pA.green() - pB.green()) ? 255 : 0, qAbs(pA.blue() - pB.blue()) ? 255 : 0);
 							C.setPixel(x, y, pC.rgb());
 						}
 						view->setImage(C, ImageView::KEEP_FIT_FORCE);
