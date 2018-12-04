@@ -1,6 +1,6 @@
 #include "cuttle.hh"
 
-#include <asterid/strops.hh>
+#include <asterid/strop.hh>
 #include "rwsl.hh"
 
 #include <atomic>
@@ -77,6 +77,9 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QPushButton * diffSButton = new QPushButton {"Diff Stencil", diffCont};
 	diffLayout->addWidget(diffSButton);
 	
+	QPushButton * ignoreButton = new QPushButton {"Ignore", diffCont}; 
+	diffLayout->addWidget(ignoreButton);
+	
 	activeLayout->addWidget(diffCont);
 	
 	activeLayout->setMargin(0);
@@ -87,6 +90,10 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QWidget * controlCont = new QWidget {mainCont};
 	QHBoxLayout * controlLayout = new QHBoxLayout {controlCont};
 	controlLayout->setMargin(0);
+	
+	//QPushButton * raiButton = new QPushButton {"RAI", controlCont};
+	//raiButton->setToolTip("Remove All Identical: Will remove all but one identical images in a group, the smallest one will be kept.");
+	//controlLayout->addWidget(raiButton);
 	
 	QPushButton * newButton = new QPushButton {"New", controlCont};
 	controlLayout->addWidget(newButton);
@@ -101,7 +108,11 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	
 	mainLayout->addWidget(controlCont, 1, 0, 1, 1);
 	
+	QShortcut * shortL = new QShortcut(QKeySequence(tr("1", "View Left")), this);
+	QShortcut * shortR = new QShortcut(QKeySequence(tr("2", "View Right")), this);
+	
 	connect(builder, &CuttleBuilder::begin, processor, &CuttleProcessor::beginProcessing);
+	//connect(raiButton, &QPushButton::pressed, processor, &CuttleProcessor::remove_all_idential);
 	connect(newButton, &QPushButton::pressed, builder, &CuttleBuilder::focus);
 	connect(stopButton, &QPushButton::pressed, processor, [this](){this->processor->stop();});
 	
@@ -146,6 +157,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 		newButton->setEnabled(true);
 		
 		for (CuttleSet const * set : processor->getSetsAboveThresh(DEFAULT_THRESHOLD)) {
+			
 			CuttleLeftItem * item = new CuttleLeftItem {leftListArea, set, processor};
 			leftList.append(item);
 			
@@ -160,28 +172,40 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					connect(diffButton, &QPushButton::pressed, this, [=]() {
 						QImage A = set->getImage();
 						QImage B = active_set->getImage();
-						if (A.size() != B.size()) B = B.scaled(A.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+						if (A.size() != B.size()) {
+							auto As = A.width() * A.height(), Bs = B.width() * B.height();
+							if (As > Bs)
+								B = B.scaled(A.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+							else 
+								A = A.scaled(B.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+						}
 						QImage C {A.size(), QImage::Format_RGB32};
 						for (int y = 0; y < A.height(); y++) for (int x = 0; x < A.width(); x++) {
 							QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
 							pC.setRgb(qAbs(pA.red() - pB.red()), qAbs(pA.green() - pB.green()), qAbs(pA.blue() - pB.blue()));
 							C.setPixel(x, y, pC.rgb());
 						}
-						view->setImage(C, ImageView::KEEP_FIT_FORCE);
+						view->setImagePreserve(C);
 					});
 					
 					diffSButton->disconnect();
 					connect(diffSButton, &QPushButton::pressed, this, [=]() {
 						QImage A = set->getImage();
 						QImage B = active_set->getImage();
-						if (A.size() != B.size()) B = B.scaled(A.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+						if (A.size() != B.size()) {
+							auto As = A.width() * A.height(), Bs = B.width() * B.height();
+							if (As > Bs)
+								B = B.scaled(A.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+							else 
+								A = A.scaled(B.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+						}
 						QImage C {A.size(), QImage::Format_RGB32};
 						for (int y = 0; y < A.height(); y++) for (int x = 0; x < A.width(); x++) {
 							QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
 							pC.setRgb(qAbs(pA.red() - pB.red()) ? 255 : 0, qAbs(pA.green() - pB.green()) ? 255 : 0, qAbs(pA.blue() - pB.blue()) ? 255 : 0);
 							C.setPixel(x, y, pC.rgb());
 						}
-						view->setImage(C, ImageView::KEEP_FIT_FORCE);
+						view->setImagePreserve(C);
 					});
 					
 					CuttleCompInfo set_c, active_set_c;
@@ -190,8 +214,13 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					CuttleCompItem * itemL = new CuttleCompItem {activeCompWidget, active_set, active_set_c, processor};
 					CuttleCompItem * itemR = new CuttleCompItem {activeCompWidget, set, set_c, processor};
 					
-					connect(itemL, &CuttleCompItem::view, this, [=](CuttleSet const * set){ view->setImage(set->getImage(), ImageView::KEEP_FIT_FORCE); });
-					connect(itemR, &CuttleCompItem::view, this, [=](CuttleSet const * set){ view->setImage(set->getImage(), ImageView::KEEP_FIT_FORCE); });
+					shortL->disconnect();
+					shortR->disconnect();
+					connect(shortL, &QShortcut::activated, this, [=](){ view->setImagePreserve(itemL->set->getImage()); });
+					connect(shortR, &QShortcut::activated, this, [=](){ view->setImagePreserve(itemR->set->getImage()); });
+					
+					connect(itemL, &CuttleCompItem::view, this, [=](CuttleSet const * set){ view->setImagePreserve(set->getImage()); });
+					connect(itemR, &CuttleCompItem::view, this, [=](CuttleSet const * set){ view->setImagePreserve(set->getImage()); });
 					
 					auto deleteme_func = [=](CuttleSet const * set) {
 						QFile::remove(set->filename);
@@ -199,6 +228,11 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					};
 					connect(itemL, &CuttleCompItem::delete_me, this, deleteme_func);
 					connect(itemR, &CuttleCompItem::delete_me, this, deleteme_func);
+					
+					ignoreButton->disconnect();
+					connect(ignoreButton, &QPushButton::pressed, this, [=]() {
+						processor->remove(set, active_set);
+					});
 					
 					compList.append(itemL);
 					compList.append(itemR);

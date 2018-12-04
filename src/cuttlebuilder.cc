@@ -29,6 +29,9 @@ CuttleBuilderDirEntry::CuttleBuilderDirEntry(CuttleDirectory & dir, QWidget * pa
 }
 
 CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
+	
+	this->setWindowFlags(this->windowFlags() | Qt::Dialog);
+	
 	QGridLayout * layout = new QGridLayout {this};
 	
 	QScrollArea * dirListArea = new QScrollArea {this};
@@ -43,8 +46,18 @@ CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
 	QPushButton * addBut = new QPushButton {"Add", this};
 	layout->addWidget(addBut, 1, 0, 1, 1);
 	
+	QHBoxLayout * gLayout = new QHBoxLayout {this};
+	gLayout->setMargin(0);
+	layout->addLayout(gLayout, 2, 0, 1, 1);
+	
+	QSpinBox * cacheSpin = new QSpinBox {this};
+	cacheSpin->setValue(32);
+	cacheSpin->setMinimum(1);
+	cacheSpin->setMaximum(65535);
+	gLayout->addWidget(cacheSpin);
+	
 	QPushButton * goBut = new QPushButton {"Go", this};
-	layout->addWidget(goBut, 2, 0, 1, 1);
+	gLayout->addWidget(goBut);
 	
 	connect(addBut, &QPushButton::pressed, [this](){
 		QString dir = QFileDialog::getExistingDirectory(this, "Select Directory", QDir::currentPath(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
@@ -53,7 +66,14 @@ CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
 		dirs.append(cdir);
 		buildView();
 	});
-	connect(goBut, &QPushButton::pressed, [this](){emit begin(dirs); hide();});
+	connect(goBut, &QPushButton::pressed, [this, cacheSpin](){emit begin(dirs); hide();});
+	
+	auto args = QApplication::arguments();
+	for (int i = 1; i < args.length(); i++) {
+		if (!QDir{args[i]}.exists()) continue;
+		dirs.append({args[i], true});
+	}
+	buildView();
 }
 
 void CuttleBuilder::focus() {

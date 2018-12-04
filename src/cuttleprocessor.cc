@@ -27,6 +27,9 @@ CuttleProcessor::~CuttleProcessor() {
 }
 
 void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
+	
+	qDebug() << "BEGIN PROCESSING";
+	
 	emit started();
 	emit section("Preparing...");
 	emit max(0);
@@ -98,7 +101,7 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 				sublk.write_unlock();
 				CuttleSet & setref = const_cast<CuttleSet &>(*set); // FIXME -- Why do I have to do this? I'm not using a const_iterator yet it's only giving me const references...
 				try {
-					setref.generate(32);
+					setref.generate(128);
 					setref.id = id++;
 				} catch (CuttleNullImageException) {
 					setref.delete_me = true;
@@ -215,6 +218,30 @@ std::vector<CuttleSet const *> CuttleProcessor::getSetsAboveThresh(CuttleSet con
 void CuttleProcessor::remove(CuttleSet const * set) {
 	emit started();
 	sets.erase(std::remove_if(sets.begin(), sets.end(), [&set](CuttleSet & v){return v.id == set->id;}), sets.end());
+	emit finished();
+}
+
+void CuttleProcessor::remove(CuttleSet const * setA, CuttleSet const * setB) {
+	emit started();
+	//sets.erase(std::remove_if(sets.begin(), sets.end(), [&](CuttleSet & v){return v.id == setA->id || v.id == setB->id;}), sets.end());
+	if (setA->id > setB->id) match_data_fast[setA->id][setB->id] = 0;
+	else match_data_fast[setB->id][setA->id] = 0;
+	emit finished();
+}
+
+void CuttleProcessor::remove_all_idential() {
+	emit started();
+	auto iter = sets.begin();
+	std::vector<std::vector<CuttleSet>::iterator> iter_set;
+	while (iter != sets.end()) {
+		for (auto const & iter2 : sets) {
+			if (iter->id != iter2.id && getMatchData(*iter, iter2) == 1) {
+				qDebug() << "MATCH";
+			}
+		}
+		iter_set.clear();
+		iter++;
+	}
 	emit finished();
 }
 

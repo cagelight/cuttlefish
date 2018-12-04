@@ -97,7 +97,8 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	infoLayout->addWidget(eqLabel);
 	
 	char const * color;
-	switch (comp.size) {
+	if (comp.equal) color = "green";
+	else switch (comp.size) {
 		case CuttleCompInfo::status::high:
 			color = "green";
 			break;
@@ -112,7 +113,8 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QLabel * sizeLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(readable_file_size(set->fi.size())).arg(color), infoWidget};
 	infoLayout->addWidget(sizeLabel);
 	
-	switch (comp.dims) {
+	if (comp.equal) color = "green";
+	else switch (comp.dims) {
 		case CuttleCompInfo::status::high:
 			color = "green";
 			break;
@@ -128,7 +130,8 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QLabel * dimLabel = new QLabel {QString{ "<font color='%3'>%1x%2</font>" }.arg(dimsA.width()).arg(dimsA.height()).arg(color), infoWidget};
 	infoLayout->addWidget(dimLabel);
 	
-	switch (comp.date) {
+	if (comp.equal) color = "green";
+	else switch (comp.date) {
 		case CuttleCompInfo::status::high:
 			color = "green";
 			break;

@@ -1,6 +1,6 @@
 #include "cuttleold.hh"
 
-#include <asterid/strops.hh>
+#include <asterid/strop.hh>
 #include "../rwsl.hh"
 
 #include <atomic>

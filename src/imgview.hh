@@ -29,6 +29,7 @@ public:
 	ZKEEP getKeepState() {return keep;}
 public slots:
 	void setImage(QImage, ZKEEP keepStart = KEEP_FIT);
+	void setImagePreserve(QImage);
 	void setKeepState(ZKEEP z) {keep = z; this->update();}
 protected slots:
 	void centerView();
@@ -56,6 +57,7 @@ private: //Methods
 	void setZoom(qreal, QPointF focus = QPointF(0, 0));
 	void calculateZoomLevels();
 	void calculateView();
+	/*
 private: //Bilinear
 	std::atomic_bool bilGood {true};
 	std::thread * bilWorker = nullptr;
@@ -69,6 +71,7 @@ private: //Bilinear
 signals:
 	void bilComplete();
 	void bilProc();
+	*/
 };
 
 #endif // IMGVIEW_HPP

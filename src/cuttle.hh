@@ -95,11 +95,19 @@ public:
 	std::vector<CuttleSet const *> getSetsAboveThresh(double high) const;
 	std::vector<CuttleSet const *> getSetsAboveThresh(CuttleSet const * comp, double thresh) const;
 	void remove(CuttleSet const * set);
+	void remove(CuttleSet const * setA, CuttleSet const * setB);
+	void remove_all_idential();
 	inline double getMatchData(CuttleSet const * A, CuttleSet const * B) const {
 		if (A->group && B->group && A->group == B->group) return 0;
 		if (A->id == B->id) return 1;
 		if (A->id > B->id) return match_data_fast[A->id][B->id];
 		else return match_data_fast[B->id][A->id];
+	}
+	inline double getMatchData(CuttleSet const & A, CuttleSet const & B) const {
+		if (A.group && B.group && A.group == B.group) return 0;
+		if (A.id == B.id) return 1;
+		if (A.id > B.id) return match_data_fast[A.id][B.id];
+		else return match_data_fast[B.id][A.id];
 	}
 protected:
 	std::vector<CuttleSet> sets {};
