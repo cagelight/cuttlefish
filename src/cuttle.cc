@@ -1,6 +1,6 @@
 #include "cuttle.hh"
 
-#include <asterid/strop.hh>
+#include <asterales/strop.hh>
 #include "rwsl.hh"
 
 #include <atomic>

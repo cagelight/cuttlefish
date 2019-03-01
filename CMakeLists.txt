@@ -19,7 +19,7 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(ProjectIncludeDirectories ${CMAKE_CURRENT_BINARY_DIR})
-set(ProjectLibs "-lpthread -lasterid")
+set(ProjectLibs "-lpthread -lasterales")
 
 file(GLOB ProjectFiles
     "${ProjectDir}/src/*.hh"

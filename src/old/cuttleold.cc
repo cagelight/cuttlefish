@@ -1,6 +1,6 @@
 #include "cuttleold.hh"
 
-#include <asterid/strop.hh>
+#include <asterales/strop.hh>
 #include "../rwsl.hh"
 
 #include <atomic>
@@ -15,7 +15,7 @@
 CuttleImg::CuttleImg(QFileInfo fi) : file(fi) {
 	if (!file.exists()) {
 		std::string fp { file.canonicalFilePath().toStdString() };
-		throw std::runtime_error {asterid::vas("%s does not exist!", fp.c_str())};
+		throw std::runtime_error {asterales::vas("%s does not exist!", fp.c_str())};
 	}
 }
 
@@ -34,7 +34,7 @@ void CuttleImg::resize(int res) {
 	QImage img = getImage();
 	if (img.isNull()) {
 		std::string fp { file.canonicalFilePath().toStdString() };
-		throw std::runtime_error {asterid::vas("image from (%s) is null!", fp.c_str())};
+		throw std::runtime_error {asterales::vas("image from (%s) is null!", fp.c_str())};
 	}
 	img = img.scaled({res, res}, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 	data.resize(res * res);
@@ -102,7 +102,7 @@ CuttleImgDisplay::CuttleImgDisplay(CuttleCore * core, CuttleImg * img) : QFrame(
 	QLabel * formatLabel = new QLabel {humanReadableSize(img->file.size()) + " " + img->file.suffix().toUpper(), this};
 	layout->addWidget(formatLabel, 1, 0, 1, 1);
 	
-	QLabel * sizeLabel = new QLabel {asterid::vas("%ix%i", imgimg.width(), imgimg.height()), this};
+	QLabel * sizeLabel = new QLabel {asterales::vas("%ix%i", imgimg.width(), imgimg.height()), this};
 	layout->addWidget(sizeLabel, 2, 0, 1, 1);
 	
 	connect(thumb, SIGNAL(pressed()), this, SLOT(doView()));
@@ -123,7 +123,7 @@ CuttleCollection::CuttleCollection(CuttleCore * core, CuttleSet * set) : QFrame(
 	preview->setPixmap(QPixmap::fromImage(set->imgs.first()->getImage().scaled({50, 50}, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
 	layout->addWidget(preview, 0, 0, 2, 1);
 	
-	itemLabel = new QLabel(asterid::vas("%i items", set->imgs.count()), this);
+	itemLabel = new QLabel(asterales::vas("%i items", set->imgs.count()), this);
 	layout->addWidget(itemLabel, 0, 1, 1, 2);
 	
 	QPushButton * goBut = new QPushButton {"Open", this};
@@ -144,7 +144,7 @@ CuttleCollection::~CuttleCollection() {
 }
 
 int CuttleCollection::updateCount() {
-	itemLabel->setText(asterid::vas("%i items", set->imgs.count()));
+	itemLabel->setText(asterales::vas("%i items", set->imgs.count()));
 	return set->imgs.count();
 }
 

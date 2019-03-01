@@ -7,7 +7,9 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
 	QGridLayout * layout = new QGridLayout {this};
 	
-	QLabel * nameLabel = new QLabel { QFileInfo(set->filename).fileName(), this };
+	QFileInfo finfo { set->filename };
+	QLabel * nameLabel = new QLabel { finfo.fileName(), this };
+	nameLabel->setToolTip(finfo.canonicalFilePath());
 	nameLabel->setMinimumWidth(LEFT_COLUMN_SIZE - 50);
 	nameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 	QFontMetrics metrics { nameLabel->font() };
@@ -51,7 +53,9 @@ CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, Cuttle
 	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
 	QGridLayout * layout = new QGridLayout {this};
 	
-	QLabel * nameLabel = new QLabel { QFileInfo(set->filename).fileName(), this };
+	QFileInfo finfo { set->filename };
+	QLabel * nameLabel = new QLabel { finfo.fileName(), this };
+	nameLabel->setToolTip(finfo.canonicalFilePath());
 	nameLabel->setMinimumWidth(RIGHT_COLUMN_SIZE - 50);
 	nameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 	QFontMetrics metrics { nameLabel->font() };
@@ -87,7 +91,9 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Maximum);
 	QGridLayout * layout = new QGridLayout {this};
 	
-	QLabel * nameLabel = new QLabel { QFileInfo(set->filename).fileName(), this };
+	QFileInfo finfo { set->filename };
+	QLabel * nameLabel = new QLabel { finfo.fileName(), this };
+	nameLabel->setToolTip(finfo.canonicalFilePath());
 	layout->addWidget(nameLabel, 0, 0, 1, 1);
 	
 	QWidget * infoWidget = new QWidget {this};
