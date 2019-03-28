@@ -3,10 +3,13 @@
 #include <QDirIterator>
 #include <QSet>
 #include <QImageReader>
+#include <QCryptographicHash>
 
 #include <chrono>
 #include <mutex>
 #include <ctgmath>
+
+#include <asterales/synchro.hh>
 
 CuttleProcessor::CuttleProcessor(QObject * parent) : QObject(parent) {
 	
@@ -69,7 +72,7 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 		
 		cuiter iter = sets.begin();
 		std::vector<CuttleSet *> toRem {};
-		rwslck sublk, emitlk;
+		asterales::rw_spinlock sublk, emitlk;
 		emit section("Loading images... %p%");
 		emit value(0);
 		emit max(sets.size());
@@ -115,9 +118,9 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 		subworkers.clear();
 		
 		match_data_size = id;
-		match_data_fast = new double * [match_data_size] {nullptr};
+		match_data_fast = new CuttleMatchData * [match_data_size] {nullptr};
 		for (uint_fast32_t x = 1; x < match_data_size; x++) {
-			match_data_fast[x] = new double [x] {0};
+			match_data_fast[x] = new CuttleMatchData [x] {};
 		}
 		
 		emit max(1);
@@ -159,8 +162,11 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 				
 				sublk.write_unlock();
 				if (curA == curB) continue;
-				if (curA->group && curB->group && curA->group == curB->group) continue;
-				double val = CuttleSet::compare(curA.operator->(), curB.operator->());
+				if (curA->group && curB->group && curA->group == curB->group)
+					continue;
+				
+				CuttleMatchData val = CuttleSet::compare(curA.base(), curB.base());
+				
 				if (curA->id > curB->id) {
 					match_data_fast[curA->id][curB->id] = val;
 				} else {
@@ -192,7 +198,7 @@ double CuttleProcessor::getHigh(CuttleSet const * set) const {
 	double high = 0;
 	for (auto const & i : sets) {
 		if (set->id == i.id) continue;
-		double val = getMatchData(&i, set);
+		double val = getMatchData(&i, set).value;
 		if (val > high) high = val;
 	}
 	return high;
@@ -210,7 +216,7 @@ std::vector<CuttleSet const *> CuttleProcessor::getSetsAboveThresh(CuttleSet con
 	std::vector<CuttleSet const *> vec {};
 	for (auto const & i : sets) {
 		if (comp->id == i.id) continue;
-		if (getMatchData(&i, comp) >= thresh) vec.push_back(&i);
+		if (getMatchData(&i, comp).value >= thresh) vec.push_back(&i);
 	}
 	return vec;
 }
@@ -224,8 +230,8 @@ void CuttleProcessor::remove(CuttleSet const * set) {
 void CuttleProcessor::remove(CuttleSet const * setA, CuttleSet const * setB) {
 	emit started();
 	//sets.erase(std::remove_if(sets.begin(), sets.end(), [&](CuttleSet & v){return v.id == setA->id || v.id == setB->id;}), sets.end());
-	if (setA->id > setB->id) match_data_fast[setA->id][setB->id] = 0;
-	else match_data_fast[setB->id][setA->id] = 0;
+	if (setA->id > setB->id) match_data_fast[setA->id][setB->id] = invalid_match;
+	else match_data_fast[setB->id][setA->id] = invalid_match;
 	emit finished();
 }
 
@@ -235,7 +241,7 @@ void CuttleProcessor::remove_all_idential() {
 	std::vector<std::vector<CuttleSet>::iterator> iter_set;
 	while (iter != sets.end()) {
 		for (auto const & iter2 : sets) {
-			if (iter->id != iter2.id && getMatchData(*iter, iter2) == 1) {
+			if (iter->id != iter2.id && getMatchData(*iter, iter2).value == 1) {
 				qDebug() << "MATCH";
 			}
 		}
@@ -266,6 +272,10 @@ void CuttleSet::generate(uint_fast16_t res) {
 	img = img.scaled({static_cast<int>(res), static_cast<int>(res)}, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 	data.resize(res * res);
 	
+	QCryptographicHash hash {QCryptographicHash::Sha512};
+	hash.addData(reinterpret_cast<char const *>(img.constBits()), img.sizeInBytes());
+	img_hash = hash.result();
+	
 	int i = 0;
 	for (uint_fast16_t y = 0; y < res; y++) {
 		for (uint_fast16_t x = 0; x < res; x++) {
@@ -274,9 +284,10 @@ void CuttleSet::generate(uint_fast16_t res) {
 	}
 }
 
-double CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
+CuttleMatchData CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
 	
-	if (A == B) return 1;
+	if (A == B) return perfect_match;
+	if (A->img_hash == B->img_hash && A->getImage() == B->getImage()) return perfect_match;
 	
 	double match = 0;
 	uint_fast16_t res = A->res;
@@ -295,5 +306,8 @@ double CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
 		match += 1.0 - mL;
 	}
 	
-	return match / (res * res);
+	CuttleMatchData dat;
+	dat.value = match / (res * res);
+	
+	return dat;
 }

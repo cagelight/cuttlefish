@@ -6,10 +6,6 @@
 #include <QImage>
 #include <QTimer>
 
-#include <thread>
-
-#include "rwsl.hh"
-
 class ImageView : public QWidget {
 	Q_OBJECT
 public:
@@ -57,21 +53,6 @@ private: //Methods
 	void setZoom(qreal, QPointF focus = QPointF(0, 0));
 	void calculateZoomLevels();
 	void calculateView();
-	/*
-private: //Bilinear
-	std::atomic_bool bilGood {true};
-	std::thread * bilWorker = nullptr;
-	rwslck viewLock;
-	rwslck drawLock;
-	QImage bilCompare;
-	QRect bilPart;
-	QRect bilDraw;
-	QImage bilRaster;
-	void bilRun();
-signals:
-	void bilComplete();
-	void bilProc();
-	*/
 };
 
 #endif // IMGVIEW_HPP

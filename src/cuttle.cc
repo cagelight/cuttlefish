@@ -1,7 +1,6 @@
 #include "cuttle.hh"
 
 #include <asterales/strop.hh>
-#include "rwsl.hh"
 
 #include <atomic>
 #include <thread>
@@ -168,10 +167,14 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					}
 					compList.clear();
 					
+					QImage const iL = active_set->getImage();
+					QImage const iR = set->getImage();
+					
+					// ================================
+					
 					diffButton->disconnect();
 					connect(diffButton, &QPushButton::pressed, this, [=]() {
-						QImage A = set->getImage();
-						QImage B = active_set->getImage();
+						QImage A = iL, B = iR;
 						if (A.size() != B.size()) {
 							auto As = A.width() * A.height(), Bs = B.width() * B.height();
 							if (As > Bs)
@@ -179,19 +182,42 @@ CuttleCore::CuttleCore() : QMainWindow() {
 							else 
 								A = A.scaled(B.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 						}
+						
 						QImage C {A.size(), QImage::Format_RGB32};
-						for (int y = 0; y < A.height(); y++) for (int x = 0; x < A.width(); x++) {
-							QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
-							pC.setRgb(qAbs(pA.red() - pB.red()), qAbs(pA.green() - pB.green()), qAbs(pA.blue() - pB.blue()));
-							C.setPixel(x, y, pC.rgb());
-						}
+						
+						struct diff_state_t {
+							int const lines;
+							std::atomic_int line;
+						} diff_state {
+							.lines = A.height(),
+							.line = 0,
+						};
+						
+						auto thread_func = [&diff_state, &A, &B, &C] () {
+							int y;
+							while ((y = diff_state.line.fetch_add(1)) < diff_state.lines) {
+								QRgb * line_data = reinterpret_cast<QRgb *>(C.scanLine(y));
+								for (int x = 0; x < A.width(); x++) {
+									QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
+									pC.setRgb(qAbs(pA.red() - pB.red()), qAbs(pA.green() - pB.green()), qAbs(pA.blue() - pB.blue()));
+									line_data[x] = pC.rgb();
+								}
+							}
+						};
+						
+						std::vector<std::thread> threads;
+						for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) threads.emplace_back(thread_func);
+						for (auto & t : threads) t.join();
+						threads.clear();
+						
 						view->setImagePreserve(C);
 					});
 					
+					// ================================
+					
 					diffSButton->disconnect();
 					connect(diffSButton, &QPushButton::pressed, this, [=]() {
-						QImage A = set->getImage();
-						QImage B = active_set->getImage();
+						QImage A = iL, B = iR;
 						if (A.size() != B.size()) {
 							auto As = A.width() * A.height(), Bs = B.width() * B.height();
 							if (As > Bs)
@@ -199,14 +225,37 @@ CuttleCore::CuttleCore() : QMainWindow() {
 							else 
 								A = A.scaled(B.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 						}
+						
 						QImage C {A.size(), QImage::Format_RGB32};
-						for (int y = 0; y < A.height(); y++) for (int x = 0; x < A.width(); x++) {
-							QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
-							pC.setRgb(qAbs(pA.red() - pB.red()) ? 255 : 0, qAbs(pA.green() - pB.green()) ? 255 : 0, qAbs(pA.blue() - pB.blue()) ? 255 : 0);
-							C.setPixel(x, y, pC.rgb());
-						}
+						
+						struct diff_state_t {
+							int const lines;
+							std::atomic_int line;
+						} diff_state {
+							.lines = A.height(),
+							.line = 0,
+						};
+						auto thread_func = [&diff_state, &A, &B, &C] () {
+							int y;
+							while ((y = diff_state.line.fetch_add(1)) < diff_state.lines) {
+								QRgb * line_data = reinterpret_cast<QRgb *>(C.scanLine(y));
+								for (int x = 0; x < A.width(); x++) {
+									QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
+									pC.setRgb(qAbs(pA.red() - pB.red()) ? 255 : 0, qAbs(pA.green() - pB.green()) ? 255 : 0, qAbs(pA.blue() - pB.blue()) ? 255 : 0);
+									line_data[x] = pC.rgb();
+								}
+							}
+						};
+						
+						std::vector<std::thread> threads;
+						for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) threads.emplace_back(thread_func);
+						for (auto & t : threads) t.join();
+						threads.clear();
+						
 						view->setImagePreserve(C);
 					});
+					
+					// ================================
 					
 					CuttleCompInfo set_c, active_set_c;
 					CuttleCompInfo::GetCompInfo(set, active_set, set_c, active_set_c);
@@ -216,11 +265,11 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					
 					shortL->disconnect();
 					shortR->disconnect();
-					connect(shortL, &QShortcut::activated, this, [=](){ view->setImagePreserve(itemL->set->getImage()); });
-					connect(shortR, &QShortcut::activated, this, [=](){ view->setImagePreserve(itemR->set->getImage()); });
+					connect(shortL, &QShortcut::activated, this, [this, iL](){ view->setImagePreserve(iL); });
+					connect(shortR, &QShortcut::activated, this, [this, iR](){ view->setImagePreserve(iR); });
 					
-					connect(itemL, &CuttleCompItem::view, this, [=](CuttleSet const * set){ view->setImagePreserve(set->getImage()); });
-					connect(itemR, &CuttleCompItem::view, this, [=](CuttleSet const * set){ view->setImagePreserve(set->getImage()); });
+					connect(itemL, &CuttleCompItem::view, this, [this, iL](){ view->setImagePreserve(iL); });
+					connect(itemR, &CuttleCompItem::view, this, [this, iR](){ view->setImagePreserve(iR); });
 					
 					auto deleteme_func = [=](CuttleSet const * set) {
 						QFile::remove(set->filename);
@@ -269,9 +318,12 @@ CuttleCore::CuttleCore() : QMainWindow() {
 }
 
 void CuttleCompInfo::GetCompInfo(CuttleSet const * A, CuttleSet const * B, CuttleCompInfo & Ac, CuttleCompInfo & Bc) {
-	auto Aimg = A->getImage();
-	auto Bimg = B->getImage();
-	Ac.equal = Bc.equal = (Aimg == Bimg);
+	
+	if (A->img_size == B->img_size) {
+		Ac.equal = Bc.equal = (A->img_hash == B->img_hash);
+	} else {
+		Ac.equal = Bc.equal = false;
+	}
 	
 	auto Asize = A->fi.size();
 	auto Bsize = B->fi.size();

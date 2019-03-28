@@ -6,6 +6,8 @@
 #include <QFrame>
 #include <QDebug>
 
+#include <atomic>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -60,9 +62,19 @@ protected:
 	QWidget * dirListWidget = nullptr;
 };
 
-//================================oh,
+//================================
 //--------------------------------
 //================================
+
+struct CuttleMatchData {
+	double value;
+	bool identical;
+};
+
+static constexpr CuttleMatchData perfect_match { 1.0, true };
+static constexpr CuttleMatchData invalid_match { 0.0, false };
+
+//--------------------------------
 
 struct CuttleSet {
 	CuttleSet(QString const & filename) : filename(filename), fi(filename) {}
@@ -76,18 +88,23 @@ struct CuttleSet {
 	std::vector<QColor> data {};
 	QFileInfo fi;
 	QSize img_size {0, 0};
+	QByteArray img_hash;
 	inline QSize get_size() const {
 		if (img_size == QSize {0, 0}) getImage();
 		return img_size;
 	}
-	static double compare(CuttleSet const * A, CuttleSet const * B);
+	static CuttleMatchData compare(CuttleSet const * A, CuttleSet const * B);
 };
+
+//--------------------------------
 
 class CuttleProcessor : public QObject {
 	Q_OBJECT
 public:
+	
 	CuttleProcessor(QObject * parent);
 	~CuttleProcessor();
+	
 	void beginProcessing(QList<CuttleDirectory> const & dirs);
 	inline void stop() {worker_run.store(false);}
 	inline std::vector<CuttleSet> const & getSets() const { return sets; }
@@ -97,22 +114,22 @@ public:
 	void remove(CuttleSet const * set);
 	void remove(CuttleSet const * setA, CuttleSet const * setB);
 	void remove_all_idential();
-	inline double getMatchData(CuttleSet const * A, CuttleSet const * B) const {
-		if (A->group && B->group && A->group == B->group) return 0;
-		if (A->id == B->id) return 1;
+	inline CuttleMatchData const & getMatchData(CuttleSet const * A, CuttleSet const * B) const {
+		if (A->group && B->group && A->group == B->group) return invalid_match;
+		if (A->id == B->id) return perfect_match;
 		if (A->id > B->id) return match_data_fast[A->id][B->id];
 		else return match_data_fast[B->id][A->id];
 	}
-	inline double getMatchData(CuttleSet const & A, CuttleSet const & B) const {
-		if (A.group && B.group && A.group == B.group) return 0;
-		if (A.id == B.id) return 1;
+	inline CuttleMatchData const & getMatchData(CuttleSet const & A, CuttleSet const & B) const {
+		if (A.group && B.group && A.group == B.group) return invalid_match;
+		if (A.id == B.id) return perfect_match;
 		if (A.id > B.id) return match_data_fast[A.id][B.id];
 		else return match_data_fast[B.id][A.id];
 	}
 protected:
 	std::vector<CuttleSet> sets {};
 	uint_fast32_t match_data_size = 0;
-	double * * match_data_fast = nullptr;
+	CuttleMatchData * * match_data_fast = nullptr;
 private:
 	std::atomic_bool worker_run {false};
 	std::thread * worker = nullptr;
@@ -175,7 +192,7 @@ public:
 	CuttleSet const * set;
 	CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCompInfo const & info, CuttleProcessor * proc);
 signals:
-	void view(CuttleSet const * _this);
+	void view();
 	void delete_me(CuttleSet const * _this);
 };
 

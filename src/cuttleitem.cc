@@ -22,7 +22,7 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 	high = 0;
 	for (CuttleSet const & cset : proc->getSets()) {
 		if (cset.id == set->id) continue;
-		double v = proc->getMatchData(set, &cset);
+		double v = proc->getMatchData(set, &cset).value;
 		if (v > high) high = v;
 	}
 	
@@ -42,7 +42,7 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 		high = 0;
 		for (CuttleSet const & cset : proc->getSets()) {
 			if (cset.id == set->id) continue;
-			double v = proc->getMatchData(set, &cset);
+			double v = proc->getMatchData(set, &cset).value;
 			if (v > high) high = v;
 		}
 	});
@@ -65,7 +65,7 @@ CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, Cuttle
 	QWidget * lowerWidget = new QWidget {this};
 	QHBoxLayout * lowerLayout = new QHBoxLayout {lowerWidget};
 	
-	value = proc->getMatchData(set, other);
+	value = proc->getMatchData(set, other).value;
 	
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);
@@ -162,7 +162,7 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QPushButton * viewButton = new QPushButton {"VIEW"};
 	viewButton->setMinimumWidth(15);
 	viewButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(viewButton, &QPushButton::pressed, this, [=](){emit view(set);});
+	connect(viewButton, &QPushButton::pressed, this, [=](){emit view();});
 	lowerLayout->addWidget(viewButton);
 	
 	QPushButton * deleteButton = new QPushButton {"DELETE"};
