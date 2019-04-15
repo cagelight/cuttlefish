@@ -111,9 +111,9 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QShortcut * shortR = new QShortcut(QKeySequence(tr("2", "View Right")), this);
 	
 	connect(builder, &CuttleBuilder::begin, processor, &CuttleProcessor::beginProcessing);
-	//connect(raiButton, &QPushButton::pressed, processor, &CuttleProcessor::remove_all_idential);
-	connect(newButton, &QPushButton::pressed, builder, &CuttleBuilder::focus);
-	connect(stopButton, &QPushButton::pressed, processor, [this](){this->processor->stop();});
+	//connect(raiButton, &QPushButton::clicked, processor, &CuttleProcessor::remove_all_idential);
+	connect(newButton, &QPushButton::clicked, builder, &CuttleBuilder::focus);
+	connect(stopButton, &QPushButton::clicked, processor, [this](){this->processor->stop();});
 	
 	connect(processor, &CuttleProcessor::section, progress, [progress](QString str){
 		progress->setFormat(str);
@@ -173,7 +173,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					// ================================
 					
 					diffButton->disconnect();
-					connect(diffButton, &QPushButton::pressed, this, [=]() {
+					connect(diffButton, &QPushButton::clicked, this, [=]() {
 						QImage A = iL, B = iR;
 						if (A.size() != B.size()) {
 							auto As = A.width() * A.height(), Bs = B.width() * B.height();
@@ -216,7 +216,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					// ================================
 					
 					diffSButton->disconnect();
-					connect(diffSButton, &QPushButton::pressed, this, [=]() {
+					connect(diffSButton, &QPushButton::clicked, this, [=]() {
 						QImage A = iL, B = iR;
 						if (A.size() != B.size()) {
 							auto As = A.width() * A.height(), Bs = B.width() * B.height();
@@ -279,7 +279,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					connect(itemR, &CuttleCompItem::delete_me, this, deleteme_func);
 					
 					ignoreButton->disconnect();
-					connect(ignoreButton, &QPushButton::pressed, this, [=]() {
+					connect(ignoreButton, &QPushButton::clicked, this, [=]() {
 						processor->remove(set, active_set);
 					});
 					

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.11)
 
 set(ProjectName "cuttlefish" CACHE STRING "Project Name")
 project(${ProjectName})
-set(CMAKE_BUILD_TYPE "DEBUG")
+set(CMAKE_BUILD_TYPE "RELEASE")
 
 set(ProjectDir "${CMAKE_SOURCE_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})

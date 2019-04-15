@@ -29,7 +29,7 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);
 	activateButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(activateButton, &QPushButton::pressed, this, [=](){emit activated(set);});
+	connect(activateButton, &QPushButton::clicked, this, [=](){emit activated(set);});
 	lowerLayout->addWidget(activateButton);
 	
 	QLabel * highestMatchLabel = new QLabel {QString("High: %1").arg(high), lowerWidget};
@@ -70,7 +70,7 @@ CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, Cuttle
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);
 	activateButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(activateButton, &QPushButton::pressed, this, [=](){emit activated(set);});
+	connect(activateButton, &QPushButton::clicked, this, [=](){emit activated(set);});
 	lowerLayout->addWidget(activateButton);
 	
 	QLabel * highestMatchLabel = new QLabel {QString("Value: %1").arg(value), lowerWidget};
@@ -162,13 +162,13 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QPushButton * viewButton = new QPushButton {"VIEW"};
 	viewButton->setMinimumWidth(15);
 	viewButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(viewButton, &QPushButton::pressed, this, [=](){emit view();});
+	connect(viewButton, &QPushButton::clicked, this, [=](){emit view();});
 	lowerLayout->addWidget(viewButton);
 	
 	QPushButton * deleteButton = new QPushButton {"DELETE"};
 	deleteButton->setMinimumWidth(15);
 	deleteButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
-	connect(deleteButton, &QPushButton::pressed, this, [=](){
+	connect(deleteButton, &QPushButton::clicked, this, [=](){
 		if (deleteButton->text() == "CONFIRM") {
 			emit delete_me(set);
 		} else {

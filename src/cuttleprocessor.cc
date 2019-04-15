@@ -29,7 +29,7 @@ CuttleProcessor::~CuttleProcessor() {
 	}
 }
 
-void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
+void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs, size_t res) {
 	
 	qDebug() << "BEGIN PROCESSING";
 	
@@ -80,6 +80,8 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs) {
 		
 		std::atomic_uint_fast32_t id {0};
 		std::chrono::high_resolution_clock::time_point emit_limiter = std::chrono::high_resolution_clock::now();
+		
+		qDebug() << res;
 		
 		std::vector<std::thread *> subworkers;
 		for (uint i = 0; i < std::thread::hardware_concurrency(); i++) subworkers.push_back(new std::thread([&](){

@@ -24,7 +24,7 @@ CuttleBuilderDirEntry::CuttleBuilderDirEntry(CuttleDirectory & dir, QWidget * pa
 	controlLayout->addWidget(deleteThis);
 	layout->addWidget(controlWidget, 1, 0, 1, 1);
 	
-	connect(deleteThis, &QPushButton::pressed, [this](){emit remove(this);});
+	connect(deleteThis, &QPushButton::clicked, [this](){emit remove(this);});
 	connect(recurseCB, &QCheckBox::stateChanged, [this](int state){this->dir.recursive = (state == Qt::Checked);});
 }
 
@@ -59,14 +59,14 @@ CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
 	QPushButton * goBut = new QPushButton {"Go", this};
 	gLayout->addWidget(goBut);
 	
-	connect(addBut, &QPushButton::pressed, [this](){
+	connect(addBut, &QPushButton::clicked, [this](){
 		QString dir = QFileDialog::getExistingDirectory(this, "Select Directory", QDir::currentPath(), QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
 		if (dir.isNull()) return;
 		CuttleDirectory cdir {dir, false};
 		dirs.append(cdir);
 		buildView();
 	});
-	connect(goBut, &QPushButton::pressed, [this, cacheSpin](){emit begin(dirs); hide();});
+	connect(goBut, &QPushButton::clicked, this, [this, cacheSpin](){emit begin(dirs, cacheSpin->value()); hide();});
 	
 	auto args = QApplication::arguments();
 	for (int i = 1; i < args.length(); i++) {

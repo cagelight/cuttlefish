@@ -54,7 +54,7 @@ public:
 	CuttleBuilder(QWidget * parent);
 	void focus();
 signals:
-	void begin(QList<CuttleDirectory> const &);
+	void begin(QList<CuttleDirectory> const &, size_t res);
 protected:
 	void buildView();
 	QList<CuttleDirectory> dirs;
@@ -105,7 +105,7 @@ public:
 	CuttleProcessor(QObject * parent);
 	~CuttleProcessor();
 	
-	void beginProcessing(QList<CuttleDirectory> const & dirs);
+	void beginProcessing(QList<CuttleDirectory> const & dirs, size_t res);
 	inline void stop() {worker_run.store(false);}
 	inline std::vector<CuttleSet> const & getSets() const { return sets; }
 	double getHigh(CuttleSet const * set) const;
