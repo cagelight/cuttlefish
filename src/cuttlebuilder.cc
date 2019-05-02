@@ -66,7 +66,8 @@ CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
 		dirs.append(cdir);
 		buildView();
 	});
-	connect(goBut, &QPushButton::clicked, this, [this, cacheSpin](){emit begin(dirs, cacheSpin->value()); hide();});
+	
+	connect(goBut, &QPushButton::clicked, this, [=](){emit begin(dirs, cacheSpin->value()); hide();});
 	
 	auto args = QApplication::arguments();
 	for (int i = 1; i < args.length(); i++) {

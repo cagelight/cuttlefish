@@ -51,7 +51,7 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs, size_
 	}
 	
 	worker_run.store(true);
-	worker = new std::thread {[&](){
+	worker = new std::thread {[&, res](){
 		
 		std::atomic_uint_fast32_t group_id {0};
 		if (dirs.size() > 1) group_id++;
@@ -81,8 +81,6 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs, size_
 		std::atomic_uint_fast32_t id {0};
 		std::chrono::high_resolution_clock::time_point emit_limiter = std::chrono::high_resolution_clock::now();
 		
-		qDebug() << res;
-		
 		std::vector<std::thread *> subworkers;
 		for (uint i = 0; i < std::thread::hardware_concurrency(); i++) subworkers.push_back(new std::thread([&](){
 			while (this->worker_run) {
@@ -106,7 +104,7 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs, size_
 				sublk.write_unlock();
 				CuttleSet & setref = const_cast<CuttleSet &>(*set); // FIXME -- Why do I have to do this? I'm not using a const_iterator yet it's only giving me const references...
 				try {
-					setref.generate(128);
+					setref.generate(res);
 					setref.id = id++;
 				} catch (CuttleNullImageException) {
 					setref.delete_me = true;
