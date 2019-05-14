@@ -79,6 +79,17 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QPushButton * ignoreButton = new QPushButton {"Ignore", diffCont}; 
 	diffLayout->addWidget(ignoreButton);
 	
+	QPushButton * saveView = new QPushButton {"Save Current Viewport", diffCont}; 
+	diffLayout->addWidget(saveView);
+	
+	connect(saveView, &QPushButton::clicked, this, [this](){
+		QImage img = view->getImageOfView();
+		QString loc = QFileDialog::getSaveFileName(this, "Save Image View", "view.png", tr("Portable Network Graphics (*.png)"));
+		if (!loc.isEmpty()) {
+			img.save(loc, nullptr, 100);
+		}
+	});
+	
 	activeLayout->addWidget(diffCont);
 	
 	activeLayout->setMargin(0);
@@ -288,7 +299,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					activeCompLayout->addWidget(itemL);
 					activeCompLayout->addWidget(itemR);
 					
-					view->setImage(set->getImage(), ImageView::KEEP_FIT_FORCE);
+					view->setImagePreserve(set->getImage());
 				};
 				for (CuttleRightItem * item : rightList) {
 					delete item;
