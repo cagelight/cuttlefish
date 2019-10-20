@@ -1,5 +1,7 @@
 #include "cuttle.hh"
 
+#include "rw_spinlock.hh"
+
 #include <QDirIterator>
 #include <QSet>
 #include <QImageReader>
@@ -9,11 +11,7 @@
 #include <mutex>
 #include <ctgmath>
 
-#include <asterales/synchro.hh>
-
-CuttleProcessor::CuttleProcessor(QObject * parent) : QObject(parent) {
-	
-}
+CuttleProcessor::CuttleProcessor(QObject * parent) : QObject(parent) {}
 
 CuttleProcessor::~CuttleProcessor() {
 	if (worker) {
@@ -72,7 +70,7 @@ void CuttleProcessor::beginProcessing(QList<CuttleDirectory> const & dirs, size_
 		
 		cuiter iter = sets.begin();
 		std::vector<CuttleSet *> toRem {};
-		asterales::rw_spinlock sublk, emitlk;
+		rw_spinlock sublk, emitlk;
 		emit section("Loading images... %p%");
 		emit value(0);
 		emit max(sets.size());

@@ -1,7 +1,5 @@
 #include "cuttle.hh"
 
-#include <asterales/strop.hh>
-
 #include <atomic>
 #include <thread>
 #include <vector>
@@ -10,8 +8,6 @@
 #include <QImage>
 #include <QImageReader>
 #include <QDebug>
-
-#define DEFAULT_THRESHOLD 0.985
 
 CuttleCore::CuttleCore() : QMainWindow() {
 	
@@ -108,6 +104,17 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QPushButton * newButton = new QPushButton {"New", controlCont};
 	controlLayout->addWidget(newButton);
 	
+	QDoubleSpinBox * threshSpin = new QDoubleSpinBox {controlCont};
+	threshSpin->setSingleStep(0.001);
+	threshSpin->setMinimum(0);
+	threshSpin->setMaximum(0.999);
+	threshSpin->setDecimals(3);
+	threshSpin->setValue(0.985);
+	controlLayout->addWidget(threshSpin);
+	
+	QPushButton * threshButton = new QPushButton {"Refresh", controlCont};
+	controlLayout->addWidget(threshButton);
+	
 	QProgressBar * progress = new QProgressBar {controlCont};
 	progress->setMinimum(0);
 	progress->setMaximum(100);
@@ -139,7 +146,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 		progress->update();
 	}, Qt::QueuedConnection);
 	
-	connect(processor, &CuttleProcessor::started, this, [=](){
+	auto startUIFunc =  [=](){
 		this->view->setImage({});
 		leftListArea->setEnabled(false);
 		rightListArea->setEnabled(false);
@@ -159,14 +166,14 @@ CuttleCore::CuttleCore() : QMainWindow() {
 			delete item;
 		}
 		compList.clear();
-	}, Qt::QueuedConnection);
+	};
 	
-	connect(processor, &CuttleProcessor::finished, this, [=](){
+	auto finishUIFunc = [=](){
 		leftListArea->setEnabled(true);
 		rightListArea->setEnabled(true);
 		newButton->setEnabled(true);
 		
-		for (CuttleSet const * set : processor->getSetsAboveThresh(DEFAULT_THRESHOLD)) {
+		for (CuttleSet const * set : processor->getSetsAboveThresh(threshSpin->value())) {
 			
 			CuttleLeftItem * item = new CuttleLeftItem {leftListArea, set, processor};
 			leftList.append(item);
@@ -305,14 +312,14 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					delete item;
 				}
 				rightList.clear();
-				for (CuttleSet const * set : processor->getSetsAboveThresh(active_set, DEFAULT_THRESHOLD)) {
+				for (CuttleSet const * set : processor->getSetsAboveThresh(active_set, threshSpin->value())) {
 					if (set->id == active_set->id) continue;
 					CuttleRightItem * item = new CuttleRightItem {rightListWidget, set, active_set, processor};
 					rightList.append(item);
 					
 					connect(item, &CuttleRightItem::activated, this, comp_func);
 				}
-				qSort(rightList.begin(), rightList.end(), [](CuttleRightItem const * A, CuttleRightItem const * B){return A->getValue() > B->getValue();});
+				std::sort(rightList.begin(), rightList.end(), [](CuttleRightItem const * A, CuttleRightItem const * B){return A->getValue() > B->getValue();});
 				for (CuttleRightItem * item : rightList) {
 					rightListLayout->addWidget(item);
 				}
@@ -320,12 +327,20 @@ CuttleCore::CuttleCore() : QMainWindow() {
 				view->setImage(active_set->getImage(), ImageView::KEEP_FIT_FORCE);
 			});
 		}
-		qSort(leftList.begin(), leftList.end(), [](CuttleLeftItem const * A, CuttleLeftItem const * B){return A->getHigh() > B->getHigh();});
+		std::sort(leftList.begin(), leftList.end(), [](CuttleLeftItem const * A, CuttleLeftItem const * B){return A->getHigh() > B->getHigh();});
 		for (CuttleLeftItem * item : leftList) {
 			leftListLayout->addWidget(item);
 		}
 		
-	}, Qt::QueuedConnection);
+	};
+	
+	connect(processor, &CuttleProcessor::started, this, startUIFunc, Qt::QueuedConnection);
+	connect(processor, &CuttleProcessor::finished, this, finishUIFunc, Qt::QueuedConnection);
+	
+	connect(threshButton, &QPushButton::clicked, this, [=](){
+		startUIFunc();
+		finishUIFunc();
+	});
 }
 
 void CuttleCompInfo::GetCompInfo(CuttleSet const * A, CuttleSet const * B, CuttleCompInfo & Ac, CuttleCompInfo & Bc) {
