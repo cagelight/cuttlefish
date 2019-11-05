@@ -16,6 +16,7 @@
 
 #define LEFT_COLUMN_SIZE 280
 #define RIGHT_COLUMN_SIZE 280
+#define THUMB_SIZE 36
 
 //================================
 //--------------------------------
@@ -86,6 +87,7 @@ struct CuttleSet {
 	uint_fast16_t res = 0;
 	bool delete_me = false;
 	std::vector<QColor> data {};
+	QPixmap thumb;
 	QFileInfo fi;
 	QSize img_size {0, 0};
 	QByteArray img_hash;

@@ -26,6 +26,12 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 		if (v > high) high = v;
 	}
 	
+	QLabel * thumb = new QLabel {this};
+	thumb->setFixedSize(THUMB_SIZE, THUMB_SIZE);
+	thumb->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	thumb->setPixmap(set->thumb);
+	lowerLayout->addWidget(thumb);
+	
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);
 	activateButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
@@ -66,6 +72,12 @@ CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, Cuttle
 	QHBoxLayout * lowerLayout = new QHBoxLayout {lowerWidget};
 	
 	value = proc->getMatchData(set, other).value;
+	
+	QLabel * thumb = new QLabel {this};
+	thumb->setFixedSize(THUMB_SIZE, THUMB_SIZE);
+	thumb->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	thumb->setPixmap(set->thumb);
+	lowerLayout->addWidget(thumb);
 	
 	QPushButton * activateButton = new QPushButton {"GO"};
 	activateButton->setMinimumWidth(15);

@@ -267,6 +267,7 @@ void CuttleSet::generate(uint_fast16_t res) {
 	if (img.isNull()) {
 		throw CuttleNullImageException {};
 	}
+	thumb = QPixmap::fromImage(img.scaled(THUMB_SIZE, THUMB_SIZE, Qt::KeepAspectRatio, Qt::SmoothTransformation));
 	img = img.scaled({static_cast<int>(res), static_cast<int>(res)}, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 	data.resize(res * res);
 	
