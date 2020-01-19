@@ -290,6 +290,7 @@ CuttleMatchData CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
 	
 	double match = 0;
 	uint_fast16_t res = A->res;
+	
 	for (uint_fast16_t i = 0; i < res * res; i++) {
 		
 		QColor const & cA = A->data[i];
@@ -298,11 +299,16 @@ CuttleMatchData CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
 		double mR = abs(cA.redF() - cB.redF());
 		double mG = abs(cA.greenF() - cB.greenF());
 		double mB = abs(cA.blueF() - cB.blueF());
+		
+		/*
 		double mL = mR;
 		if (mL > mG) mL = mG;
 		if (mL > mB) mL = mB;
 		
 		match += 1.0 - mL;
+		*/
+		
+		match += (3.0 - (mR + mG + mB)) / 3.0;
 	}
 	
 	CuttleMatchData dat;

@@ -156,11 +156,14 @@ public:
 	CuttleLeftItem(QWidget * parent, CuttleSet const *, CuttleProcessor *);
 	inline double getHigh() const { return high; }
 private:
+	void * token;
 	CuttleProcessor * proc = nullptr;
 	double high;
 signals:
 	void activated(CuttleSet const * _this);
 	void recalculateHigh();
+public slots:
+	void activate();
 };
 
 class CuttleRightItem : public QFrame {

@@ -1,5 +1,6 @@
 #include "cuttle.hh"
 
+#include "QElidedLabel.hh"
 #include <QtWidgets>
 
 CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttleProcessor * proc) : QFrame(parent), set(set), proc(proc) {
@@ -33,6 +34,7 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 	lowerLayout->addWidget(thumb);
 	
 	QPushButton * activateButton = new QPushButton {"GO"};
+	token = activateButton;
 	activateButton->setMinimumWidth(15);
 	activateButton->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::MinimumExpanding);
 	connect(activateButton, &QPushButton::clicked, this, [=](){emit activated(set);});
@@ -52,6 +54,10 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 			if (v > high) high = v;
 		}
 	});
+}
+
+void CuttleLeftItem::activate() {
+	reinterpret_cast<QPushButton *>(token)->click();
 }
 
 CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, CuttleSet const * other, CuttleProcessor * proc) : QFrame(parent), set(set) {
@@ -104,7 +110,7 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QGridLayout * layout = new QGridLayout {this};
 	
 	QFileInfo finfo { set->filename };
-	QLabel * nameLabel = new QLabel { finfo.fileName(), this };
+	QElidedLabel * nameLabel = new QElidedLabel { QString { "%1 [%2]" } .arg(finfo.fileName()) .arg(finfo.canonicalFilePath()), this };
 	nameLabel->setToolTip(finfo.canonicalFilePath());
 	layout->addWidget(nameLabel, 0, 0, 1, 1);
 	

@@ -1,6 +1,7 @@
 #include "cuttle.hh"
 
 #include <atomic>
+#include <future>
 #include <thread>
 #include <vector>
 
@@ -8,6 +9,7 @@
 #include <QImage>
 #include <QImageReader>
 #include <QDebug>
+#include <QShortcut>
 
 CuttleCore::CuttleCore() : QMainWindow() {
 	
@@ -62,21 +64,49 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	view->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	activeLayout->addWidget(view);
 	
-	QWidget * diffCont = new QWidget {viewCont};
-	QHBoxLayout * diffLayout = new QHBoxLayout {diffCont};
+	QWidget * imgControlCont = new QWidget {viewCont};
+	QHBoxLayout * imgControlLayout = new QHBoxLayout {imgControlCont};
+	imgControlLayout->setAlignment(Qt::AlignTop);
+	imgControlLayout->setMargin(0);
+	
+	// Diff
+	QWidget * diffWidget = new QWidget { imgControlCont };
+	QVBoxLayout * diffLayout = new QVBoxLayout { diffWidget };
 	diffLayout->setMargin(0);
-	
-	QPushButton * diffButton = new QPushButton {"Diff", diffCont};
+	QPushButton * diffButton = new QPushButton { "Diff", diffWidget };
 	diffLayout->addWidget(diffButton);
+	QSlider * diffSlider = new QSlider { diffWidget };
+	diffSlider->setMinimum(1);
+	diffSlider->setMaximum(255);
+	diffSlider->setOrientation(Qt::Horizontal);
+	diffSlider->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	diffLayout->addWidget(diffSlider);
+	imgControlLayout->addWidget(diffWidget);
 	
-	QPushButton * diffSButton = new QPushButton {"Diff Stencil", diffCont};
-	diffLayout->addWidget(diffSButton);
+	QShortcut * diffShort = new QShortcut { QKeySequence { tr("Ctrl+D") }, diffWidget };
+	connect(diffShort, &QShortcut::activated, diffWidget, [diffButton, diffSlider](){
+		diffSlider->setValue(1);
+		diffButton->click();
+	});
 	
-	QPushButton * ignoreButton = new QPushButton {"Ignore", diffCont}; 
-	diffLayout->addWidget(ignoreButton);
+	QShortcut * diffMaxShort = new QShortcut { QKeySequence { tr("Shift+D") }, diffWidget };
+	connect(diffMaxShort, &QShortcut::activated, diffWidget, [diffButton, diffSlider](){
+		diffSlider->setValue(255);
+		diffButton->click();
+	});
 	
-	QPushButton * saveView = new QPushButton {"Save Current Viewport", diffCont}; 
-	diffLayout->addWidget(saveView);
+	// Ignore
+	QPushButton * ignoreButton = new QPushButton {"Ignore", imgControlCont};
+	ignoreButton->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	imgControlLayout->addWidget(ignoreButton);
+	
+	QShortcut * ignoreShort = new QShortcut { QKeySequence { tr("Ctrl+I") }, ignoreButton };
+	connect(ignoreShort, &QShortcut::activated, ignoreButton, &QPushButton::click);
+	
+	// Save Viewport
+	QPushButton * saveView = new QPushButton {"Save Current Viewport", imgControlCont};
+	saveView->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	imgControlLayout->addWidget(saveView);
 	
 	connect(saveView, &QPushButton::clicked, this, [this](){
 		QImage img = view->getImageOfView();
@@ -86,7 +116,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 		}
 	});
 	
-	activeLayout->addWidget(diffCont);
+	activeLayout->addWidget(imgControlCont);
 	
 	activeLayout->setMargin(0);
 	viewLayout->addWidget(activeWidget);
@@ -185,8 +215,9 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					}
 					compList.clear();
 					
-					QImage const iL = active_set->getImage();
-					QImage const iR = set->getImage();
+					auto iRa = std::async(std::launch::async, [&set](){ return set->getImage(); });
+					QImage iL = active_set->getImage();
+					QImage iR = iRa.get();
 					
 					// ================================
 					
@@ -211,55 +242,15 @@ CuttleCore::CuttleCore() : QMainWindow() {
 							.line = 0,
 						};
 						
-						auto thread_func = [&diff_state, &A, &B, &C] () {
+						float const mult = 255.0f / (256 - diffSlider->value());
+						
+						auto thread_func = [&diff_state, &A, &B, &C, mult] () {
 							int y;
 							while ((y = diff_state.line.fetch_add(1)) < diff_state.lines) {
 								QRgb * line_data = reinterpret_cast<QRgb *>(C.scanLine(y));
 								for (int x = 0; x < A.width(); x++) {
 									QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
-									pC.setRgb(qAbs(pA.red() - pB.red()), qAbs(pA.green() - pB.green()), qAbs(pA.blue() - pB.blue()));
-									line_data[x] = pC.rgb();
-								}
-							}
-						};
-						
-						std::vector<std::thread> threads;
-						for (size_t i = 0; i < std::thread::hardware_concurrency(); i++) threads.emplace_back(thread_func);
-						for (auto & t : threads) t.join();
-						threads.clear();
-						
-						view->setImagePreserve(C);
-					});
-					
-					// ================================
-					
-					diffSButton->disconnect();
-					connect(diffSButton, &QPushButton::clicked, this, [=]() {
-						QImage A = iL, B = iR;
-						if (A.size() != B.size()) {
-							auto As = A.width() * A.height(), Bs = B.width() * B.height();
-							if (As > Bs)
-								B = B.scaled(A.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-							else 
-								A = A.scaled(B.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-						}
-						
-						QImage C {A.size(), QImage::Format_RGB32};
-						
-						struct diff_state_t {
-							int const lines;
-							std::atomic_int line;
-						} diff_state {
-							.lines = A.height(),
-							.line = 0,
-						};
-						auto thread_func = [&diff_state, &A, &B, &C] () {
-							int y;
-							while ((y = diff_state.line.fetch_add(1)) < diff_state.lines) {
-								QRgb * line_data = reinterpret_cast<QRgb *>(C.scanLine(y));
-								for (int x = 0; x < A.width(); x++) {
-									QColor pA = A.pixel(x, y), pB = B.pixel(x, y), pC;
-									pC.setRgb(qAbs(pA.red() - pB.red()) ? 255 : 0, qAbs(pA.green() - pB.green()) ? 255 : 0, qAbs(pA.blue() - pB.blue()) ? 255 : 0);
+									pC.setRgbF(qAbs(pA.redF() - pB.redF()) * mult, qAbs(pA.greenF() - pB.greenF()) * mult, qAbs(pA.blueF() - pB.blueF()) * mult);
 									line_data[x] = pC.rgb();
 								}
 							}
@@ -331,6 +322,9 @@ CuttleCore::CuttleCore() : QMainWindow() {
 		for (CuttleLeftItem * item : leftList) {
 			leftListLayout->addWidget(item);
 		}
+		
+		// TODO -- Setting
+		if (leftList.size()) leftList[0]->activate();
 		
 	};
 	
