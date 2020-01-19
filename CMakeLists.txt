@@ -45,7 +45,6 @@ set(ProjectBinary "cuttlefish")
 set(ProjectOldBinary "cuttleold")
 
 add_executable(${ProjectBinary} ${ProjectFiles})
-set(CMAKE_INSTALL_PREFIX "/usr/local/")
 install(TARGETS ${ProjectBinary} RUNTIME DESTINATION "bin/")
 set_target_properties(${ProjectBinary} PROPERTIES INCLUDE_DIRECTORIES ${ProjectIncludeDirectories})
 set_target_properties(${ProjectBinary} PROPERTIES PROJECT_LABEL "${ProjectName}")
