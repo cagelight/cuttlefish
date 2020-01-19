@@ -4,13 +4,13 @@ set(ProjectName "cuttlefish" CACHE STRING "Project Name")
 project(${ProjectName})
 
 set( CMAKE_CONFIGURATION_TYPES "Debug;Release;Native" )
-set( CMAKE_CXX_FLAGS "-std=c++11" )
+set( CMAKE_CXX_FLAGS "-std=c++17" )
 set( CMAKE_CXX_FLAGS_DEBUG   "-Wall -Og -march=core2 -mtune=native -ggdb3" )
 set( CMAKE_CXX_FLAGS_RELEASE "-w -O2 -march=core2 -mtune=generic" )
 set( CMAKE_CXX_FLAGS_NATIVE  "-w -Ofast -march=native -mtune=native" )
 
 if( NOT CMAKE_BUILD_TYPE )
-	set( CMAKE_BUILD_TYPE Native )
+	set( CMAKE_BUILD_TYPE Release )
 endif()
 
 set(ProjectDir "${CMAKE_SOURCE_DIR}")
