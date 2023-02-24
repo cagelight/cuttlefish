@@ -14,7 +14,7 @@ CuttleBuilderDirEntry::CuttleBuilderDirEntry(CuttleDirectory & dir, QWidget * pa
 	QWidget * controlWidget = new QWidget {this};
 	controlWidget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
 	QHBoxLayout * controlLayout = new QHBoxLayout {controlWidget};
-	controlLayout->setMargin(0);
+	controlLayout->setContentsMargins(0, 0, 0, 0);
 	QLabel * recurseLabel = new QLabel {"Recurse:", controlWidget};
 	controlLayout->addWidget(recurseLabel);
 	QCheckBox * recurseCB = new QCheckBox {controlWidget};
@@ -47,7 +47,7 @@ CuttleBuilder::CuttleBuilder(QWidget * parent) : QWidget {parent, Qt::Window} {
 	layout->addWidget(addBut, 1, 0, 1, 1);
 	
 	QHBoxLayout * gLayout = new QHBoxLayout {this};
-	gLayout->setMargin(0);
+	gLayout->setContentsMargins(0, 0, 0, 0);
 	layout->addLayout(gLayout, 2, 0, 1, 1);
 	
 	QSpinBox * cacheSpin = new QSpinBox {this};

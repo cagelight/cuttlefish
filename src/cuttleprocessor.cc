@@ -251,6 +251,7 @@ void CuttleProcessor::remove_all_idential() {
 
 QImage CuttleSet::getImage() const {
 	QImageReader read {filename};
+	read.setAllocationLimit(4096);
 	read.setAutoDetectImageFormat(true);
 	read.setDecideFormatFromContent(true);
 	QImage img = read.read();

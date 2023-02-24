@@ -43,7 +43,7 @@ CuttleLeftItem::CuttleLeftItem(QWidget * parent, CuttleSet const * set, CuttlePr
 	QLabel * highestMatchLabel = new QLabel {QString("High: %1").arg(high), lowerWidget};
 	lowerLayout->addWidget(highestMatchLabel);
 	
-	lowerLayout->setMargin(0);
+	lowerLayout->setContentsMargins(0, 0, 0, 0);
 	layout->addWidget(lowerWidget, 1, 0, 1, 1);
 	
 	connect(this, &CuttleLeftItem::recalculateHigh, this, [=](){
@@ -94,7 +94,7 @@ CuttleRightItem::CuttleRightItem(QWidget * parent, CuttleSet const * set, Cuttle
 	QLabel * highestMatchLabel = new QLabel {QString("Value: %1").arg(value), lowerWidget};
 	lowerLayout->addWidget(highestMatchLabel);
 	
-	lowerLayout->setMargin(0);
+	lowerLayout->setContentsMargins(0, 0, 0, 0);
 	layout->addWidget(lowerWidget, 1, 0, 1, 1);
 }
 
@@ -110,7 +110,8 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QGridLayout * layout = new QGridLayout {this};
 	
 	QFileInfo finfo { set->filename };
-	QElidedLabel * nameLabel = new QElidedLabel { QString { "%1 [%2]" } .arg(finfo.fileName()) .arg(finfo.canonicalFilePath()), this };
+	QLineEdit * nameLabel = new QLineEdit { finfo.canonicalFilePath(), this };
+	nameLabel->setReadOnly(true);
 	nameLabel->setToolTip(finfo.canonicalFilePath());
 	layout->addWidget(nameLabel, 0, 0, 1, 1);
 	
@@ -121,16 +122,15 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	infoLayout->addWidget(eqLabel);
 	
 	char const * color;
-	if (comp.equal) color = "green";
-	else switch (comp.size) {
+	switch (comp.size) {
 		case CuttleCompInfo::status::high:
-			color = "green";
+			color = comp.equal ? "red" : "green";
 			break;
 		case CuttleCompInfo::status::same:
-			color = "yellow";
+			color = comp.equal ? "green" : "yellow";
 			break;
 		case CuttleCompInfo::status::low:
-			color = "red";
+			color = comp.equal ? "green" : "red";
 			break;
 	}
 	
@@ -154,13 +154,12 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QLabel * dimLabel = new QLabel {QString{ "<font color='%3'>%1x%2</font>" }.arg(dimsA.width()).arg(dimsA.height()).arg(color), infoWidget};
 	infoLayout->addWidget(dimLabel);
 	
-	if (comp.equal) color = "green";
-	else switch (comp.date) {
+	switch (comp.date) {
 		case CuttleCompInfo::status::high:
 			color = "green";
 			break;
 		case CuttleCompInfo::status::same:
-			color = "yellow";
+			color = comp.equal ? "green" : "yellow";
 			break;
 		case CuttleCompInfo::status::low:
 			color = "red";
@@ -170,7 +169,7 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	QLabel * lastModifiedLabel = new QLabel {QString{ "<font color='%2'>%1</font>" }.arg(set->fi.lastModified().toString()).arg(color), infoWidget};
 	infoLayout->addWidget(lastModifiedLabel);
 	
-	infoLayout->setMargin(0);
+	infoLayout->setContentsMargins(0, 0, 0, 0);
 	infoLayout->setSpacing(20);
 	layout->addWidget(infoWidget, 1, 0, 1, 1);
 	
@@ -196,6 +195,6 @@ CuttleCompItem::CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCo
 	});
 	lowerLayout->addWidget(deleteButton);
 	
-	lowerLayout->setMargin(0);
+	lowerLayout->setContentsMargins(0, 0, 0, 0);
 	layout->addWidget(lowerWidget, 2, 0, 1, 1);
 }

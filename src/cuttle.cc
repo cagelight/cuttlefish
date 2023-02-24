@@ -7,7 +7,6 @@
 
 #include <QtWidgets>
 #include <QImage>
-#include <QImageReader>
 #include <QDebug>
 #include <QShortcut>
 
@@ -24,7 +23,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	
 	QWidget * viewCont = new QWidget {mainCont};
 	QHBoxLayout * viewLayout = new QHBoxLayout {viewCont};
-	viewLayout->setMargin(0);
+	viewLayout->setContentsMargins(0, 0, 0, 0);
 	
 	QScrollArea * leftListArea = new QScrollArea {viewCont};
 	QWidget * leftListWidget = new QWidget {leftListArea};
@@ -55,11 +54,12 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	
 	QWidget * activeCompWidget = new QWidget {activeWidget};
 	QHBoxLayout * activeCompLayout = new QHBoxLayout {activeCompWidget};
-	activeCompLayout->setMargin(0);
+	activeCompLayout->setContentsMargins(0, 0, 0, 0);
 	
 	activeLayout->addWidget(activeCompWidget);
 	
 	view = new ImageView {viewCont};
+	view->setKeepState(ImageView::KEEP_FIT_FORCE);
 	view->setMinimumSize(400, 400);
 	view->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	activeLayout->addWidget(view);
@@ -67,12 +67,12 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QWidget * imgControlCont = new QWidget {viewCont};
 	QHBoxLayout * imgControlLayout = new QHBoxLayout {imgControlCont};
 	imgControlLayout->setAlignment(Qt::AlignTop);
-	imgControlLayout->setMargin(0);
+	imgControlLayout->setContentsMargins(0, 0, 0, 0);
 	
 	// Diff
 	QWidget * diffWidget = new QWidget { imgControlCont };
 	QVBoxLayout * diffLayout = new QVBoxLayout { diffWidget };
-	diffLayout->setMargin(0);
+	diffLayout->setContentsMargins(0, 0, 0, 0);
 	QPushButton * diffButton = new QPushButton { "Diff", diffWidget };
 	diffLayout->addWidget(diffButton);
 	QSlider * diffSlider = new QSlider { diffWidget };
@@ -118,14 +118,14 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	
 	activeLayout->addWidget(imgControlCont);
 	
-	activeLayout->setMargin(0);
+	activeLayout->setContentsMargins(0, 0, 0, 0);
 	viewLayout->addWidget(activeWidget);
 	
 	mainLayout->addWidget(viewCont, 0, 0, 1, 1);
 	
 	QWidget * controlCont = new QWidget {mainCont};
 	QHBoxLayout * controlLayout = new QHBoxLayout {controlCont};
-	controlLayout->setMargin(0);
+	controlLayout->setContentsMargins(0, 0, 0, 0);
 	
 	//QPushButton * raiButton = new QPushButton {"RAI", controlCont};
 	//raiButton->setToolTip("Remove All Identical: Will remove all but one identical images in a group, the smallest one will be kept.");
