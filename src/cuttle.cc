@@ -103,6 +103,27 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	QShortcut * ignoreShort = new QShortcut { QKeySequence { tr("Ctrl+I") }, ignoreButton };
 	connect(ignoreShort, &QShortcut::activated, ignoreButton, &QPushButton::click);
 	
+	// Alternate Sides
+	QPushButton * alternateView = new QPushButton {"Alternate", imgControlCont};
+	alternateView->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	imgControlLayout->addWidget(alternateView);
+	
+	connect(alternateView, &QPushButton::clicked, this, [this](){
+		if (!cItemA) return;
+		cItemA = (cItemA == cItemL) ? cItemR : cItemL;
+		cItemA->view();
+	});
+	
+	// Delete Current
+	QPushButton * deleteCurrent = new QPushButton {"Delete Current", imgControlCont};
+	deleteCurrent->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	imgControlLayout->addWidget(deleteCurrent);
+	
+	connect(deleteCurrent, &QPushButton::clicked, this, [this](){
+		if (!cItemA) return;
+		cItemA->deleteMe();
+	});
+	
 	// Save Viewport
 	QPushButton * saveView = new QPushButton {"Save Current Viewport", imgControlCont};
 	saveView->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -139,7 +160,7 @@ CuttleCore::CuttleCore() : QMainWindow() {
 	threshSpin->setMinimum(0);
 	threshSpin->setMaximum(0.999);
 	threshSpin->setDecimals(3);
-	threshSpin->setValue(0.985);
+	threshSpin->setValue(0.850);
 	controlLayout->addWidget(threshSpin);
 	
 	QPushButton * threshButton = new QPushButton {"Refresh", controlCont};
@@ -192,10 +213,9 @@ CuttleCore::CuttleCore() : QMainWindow() {
 		}
 		rightList.clear();
 		
-		for (CuttleCompItem * item : compList) {
-			delete item;
-		}
-		compList.clear();
+		if (cItemL) delete cItemL;
+		if (cItemR) delete cItemR;
+		cItemL = cItemR = cItemA = nullptr;
 	};
 	
 	auto finishUIFunc = [=](){
@@ -210,10 +230,9 @@ CuttleCore::CuttleCore() : QMainWindow() {
 			
 			connect(item, &CuttleLeftItem::activated, this, [=](CuttleSet const * active_set) {
 				auto comp_func = [=](CuttleSet const * set){
-					for (auto * item : compList) {
-						delete item;
-					}
-					compList.clear();
+					if (cItemL) delete cItemL;
+					if (cItemR) delete cItemR;
+					cItemL = cItemR = cItemA = nullptr;
 					
 					auto iRa = std::async(std::launch::async, [&set](){ return set->getImage(); });
 					QImage iL = active_set->getImage();
@@ -269,33 +288,33 @@ CuttleCore::CuttleCore() : QMainWindow() {
 					CuttleCompInfo set_c, active_set_c;
 					CuttleCompInfo::GetCompInfo(set, active_set, set_c, active_set_c);
 					
-					CuttleCompItem * itemL = new CuttleCompItem {activeCompWidget, active_set, active_set_c, processor};
-					CuttleCompItem * itemR = new CuttleCompItem {activeCompWidget, set, set_c, processor};
+					cItemL = new CuttleCompItem {activeCompWidget, active_set, active_set_c, processor};
+					cItemR = new CuttleCompItem {activeCompWidget, set, set_c, processor};
+					
+					cItemA = cItemL;
 					
 					shortL->disconnect();
 					shortR->disconnect();
 					connect(shortL, &QShortcut::activated, this, [this, iL](){ view->setImagePreserve(iL); });
 					connect(shortR, &QShortcut::activated, this, [this, iR](){ view->setImagePreserve(iR); });
 					
-					connect(itemL, &CuttleCompItem::view, this, [this, iL](){ view->setImagePreserve(iL); });
-					connect(itemR, &CuttleCompItem::view, this, [this, iR](){ view->setImagePreserve(iR); });
+					connect(cItemL, &CuttleCompItem::view, this, [this, iL](){ view->setImagePreserve(iL); });
+					connect(cItemR, &CuttleCompItem::view, this, [this, iR](){ view->setImagePreserve(iR); });
 					
 					auto deleteme_func = [=](CuttleSet const * set) {
 						QFile::remove(set->filename);
 						processor->remove(set);
 					};
-					connect(itemL, &CuttleCompItem::delete_me, this, deleteme_func);
-					connect(itemR, &CuttleCompItem::delete_me, this, deleteme_func);
+					connect(cItemL, &CuttleCompItem::delete_me, this, deleteme_func);
+					connect(cItemR, &CuttleCompItem::delete_me, this, deleteme_func);
 					
 					ignoreButton->disconnect();
 					connect(ignoreButton, &QPushButton::clicked, this, [=]() {
 						processor->remove(set, active_set);
 					});
 					
-					compList.append(itemL);
-					compList.append(itemR);
-					activeCompLayout->addWidget(itemL);
-					activeCompLayout->addWidget(itemR);
+					activeCompLayout->addWidget(cItemL);
+					activeCompLayout->addWidget(cItemR);
 					
 					view->setImagePreserve(set->getImage());
 				};

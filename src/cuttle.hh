@@ -14,6 +14,8 @@
 
 #include "imgview.hh"
 
+#include <opencv2/opencv.hpp>
+
 #define LEFT_COLUMN_SIZE 280
 #define RIGHT_COLUMN_SIZE 280
 #define THUMB_SIZE 36
@@ -91,11 +93,14 @@ struct CuttleSet {
 	QFileInfo fi;
 	QSize img_size {0, 0};
 	QByteArray img_hash;
+	cv::Mat b_hist, g_hist, r_hist;
 	inline QSize get_size() const {
 		if (img_size == QSize {0, 0}) getImage();
 		return img_size;
 	}
 	static CuttleMatchData compare(CuttleSet const * A, CuttleSet const * B);
+	static double compare_pix(CuttleSet const * A, CuttleSet const * B);
+	static double compare_hist(CuttleSet const * A, CuttleSet const * B);
 };
 
 //--------------------------------
@@ -196,6 +201,7 @@ class CuttleCompItem : public QFrame {
 public:
 	CuttleSet const * set;
 	CuttleCompItem(QWidget * parent, CuttleSet const * set, CuttleCompInfo const & info, CuttleProcessor * proc);
+	inline void deleteMe() { emit delete_me(set); }
 signals:
 	void view();
 	void delete_me(CuttleSet const * _this);
@@ -217,7 +223,10 @@ private:
 	ImageView * view = nullptr;
 	QList<CuttleLeftItem *> leftList {};
 	QList<CuttleRightItem *> rightList {};
-	QList<CuttleCompItem *> compList {};
+	
+	CuttleCompItem * cItemL = nullptr;
+	CuttleCompItem * cItemR = nullptr;
+	CuttleCompItem * cItemA = nullptr;
 };
 
 //================================

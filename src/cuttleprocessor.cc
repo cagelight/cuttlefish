@@ -282,6 +282,34 @@ void CuttleSet::generate(uint_fast16_t res) {
 			data[i++] = img.pixelColor(x, y);
 		}
 	}
+	
+	// CV
+	
+	QImage testI = img.convertedTo(QImage::Format_RGB32);
+	std::vector<uint8_t> test;
+	test.reserve(testI.width() * testI.height() * 3);
+	for (int x = 0; x < res; x++) for (int y = 0; y < res; y++) {
+		QRgb c = testI.pixel(x, y);
+		test.push_back( qRed(c) );
+		test.push_back( qGreen(c) );
+		test.push_back( qBlue(c) );
+	}
+	
+	cv::Mat cvm = cv::Mat(res, res, CV_8UC3, (void *)test.data());
+	std::vector<cv::Mat> bgr_planes;
+    cv::split( cvm, bgr_planes );
+	
+	int histSize = 256;
+    float range[] = { 0, 256 }; //the upper boundary is exclusive
+    const float* histRange[] = { range };
+	
+	calcHist(&bgr_planes[0], 1, 0, cv::Mat(), b_hist, 1, &histSize, histRange, true, false);
+	calcHist(&bgr_planes[1], 1, 0, cv::Mat(), g_hist, 1, &histSize, histRange, true, false);
+	calcHist(&bgr_planes[2], 1, 0, cv::Mat(), r_hist, 1, &histSize, histRange, true, false);
+	
+	normalize(b_hist, b_hist, 1.0, 0.0, cv::NORM_L1);
+	normalize(g_hist, g_hist, 1.0, 0.0, cv::NORM_L1);
+	normalize(r_hist, r_hist, 1.0, 0.0, cv::NORM_L1);
 }
 
 CuttleMatchData CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
@@ -289,6 +317,15 @@ CuttleMatchData CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
 	if (A == B) return perfect_match;
 	if (A->img_hash == B->img_hash && A->getImage() == B->getImage()) return perfect_match;
 	
+	CuttleMatchData dat;
+	dat.value = 0;
+	dat.value += 0.3 * compare_pix(A, B);
+	dat.value += 0.7 * compare_hist(A, B);
+	
+	return dat;
+}
+
+double CuttleSet::compare_pix(CuttleSet const * A, CuttleSet const * B) {
 	double match = 0;
 	uint_fast16_t res = A->res;
 	
@@ -301,19 +338,17 @@ CuttleMatchData CuttleSet::compare(CuttleSet const * A, CuttleSet const * B) {
 		double mG = abs(cA.greenF() - cB.greenF());
 		double mB = abs(cA.blueF() - cB.blueF());
 		
-		/*
-		double mL = mR;
-		if (mL > mG) mL = mG;
-		if (mL > mB) mL = mB;
-		
-		match += 1.0 - mL;
-		*/
-		
 		match += (3.0 - (mR + mG + mB)) / 3.0;
 	}
 	
-	CuttleMatchData dat;
-	dat.value = match / (res * res);
+	return match / (res * res);
+}
+
+double CuttleSet::compare_hist(CuttleSet const * A, CuttleSet const * B) {
+	double rH = compareHist(A->r_hist, B->r_hist, cv::HISTCMP_BHATTACHARYYA);
+	double gH = compareHist(A->g_hist, B->g_hist, cv::HISTCMP_BHATTACHARYYA);
+	double bH = compareHist(A->b_hist, B->b_hist, cv::HISTCMP_BHATTACHARYYA);
+	double sH = std::max({rH, gH, bH});
 	
-	return dat;
+	return 1 - sH;
 }

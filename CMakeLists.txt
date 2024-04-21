@@ -38,6 +38,7 @@ file(GLOB ProjectFiles
 source_group("project" FILES ${ProjectFiles})
 
 find_package(Qt6 COMPONENTS Widgets Core5Compat REQUIRED)
+find_package(OpenCV COMPONENTS core imgproc features2d REQUIRED)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -48,4 +49,4 @@ add_executable(${ProjectBinary} ${ProjectFiles})
 install(TARGETS ${ProjectBinary} RUNTIME DESTINATION "bin/")
 set_target_properties(${ProjectBinary} PROPERTIES INCLUDE_DIRECTORIES ${ProjectIncludeDirectories})
 set_target_properties(${ProjectBinary} PROPERTIES PROJECT_LABEL "${ProjectName}")
-target_link_libraries(${ProjectBinary} ${ProjectLibs} Qt6::Widgets Qt6::Core5Compat)
+target_link_libraries(${ProjectBinary} ${ProjectLibs} Qt6::Widgets Qt6::Core5Compat opencv_core opencv_imgproc opencv_features2d)
